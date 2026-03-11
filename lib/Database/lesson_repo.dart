@@ -46,4 +46,15 @@ class LessonRepo {
       whereArgs: [lessonId],
     );
   }
+
+  Future<List<Question>> getQuestionsByLesson(int lessonId) async {
+    final db = await dbCore.database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'questions',
+      where: 'lesson_id = ?',
+      whereArgs: [lessonId],
+    );
+
+    return List.generate(maps.length, (i) => Question.fromMap(maps[i]));
+  }
 }
