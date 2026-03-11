@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:quizz/Views/LessonDetailScreen.dart';
 import '../Models/User.dart';
 import '../Models/Lesson.dart';
 import '../Controller/HomeController.dart';
@@ -262,7 +263,12 @@ class _HomeScreenState extends State<HomeScreen> {
               subtitle: Text("Loại: ${lesson.type == 'abc' ? 'Trắc nghiệm' : 'Điền từ'}"),
               trailing: const Icon(Icons.arrow_right, color: Colors.grey),
               onTap: () {
-                // Vào học
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => LessonDetailScreen(lesson: lesson),
+                  ),
+                );
               },
             ),
           ),
