@@ -3,6 +3,8 @@ import 'package:quizz/Database/lesson_repo.dart';
 import 'package:quizz/Models/Lesson.dart';
 import 'package:quizz/Models/Question.dart';
 
+import 'QuizScreen.dart';
+
 class LessonDetailScreen extends StatelessWidget {
   final Lesson lesson;
   final LessonRepo _repo = LessonRepo();
@@ -66,10 +68,14 @@ class LessonDetailScreen extends StatelessWidget {
           );
         },
       ),
-      // Nút bắt đầu học để kích hoạt khi có nhiều câu hỏi
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
-          // Logic làm bài kiểm tra
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => QuizScreen(lesson: lesson), // Chuyển sang màn hình làm bài
+            ),
+          );
         },
         label: const Text("Bắt đầu học ngay"),
         icon: const Icon(Icons.play_lesson),
