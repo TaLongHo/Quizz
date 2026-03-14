@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:quizz/Views/AdminHomeScreen.dart';
 import '../Controller/AuthController.dart';
 import '../Models/User.dart';
-import 'HomeScreen.dart'; // Import để chuyển trang
+import '../Service/AuthService.dart';
+import 'HomeScreen.dart';
+// import 'AdminHomeScreen.dart'; // Ní nhớ tạo file này hoặc đổi tên theo file admin của ní
 
 class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key});
+
   @override
   _LoginScreenState createState() => _LoginScreenState();
 }
@@ -11,8 +16,6 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _userController = TextEditingController();
   final TextEditingController _passController = TextEditingController();
-
-  // Gọi qua Controller, không gọi trực tiếp Repo
   final AuthController _authController = AuthController();
 
   void _handleLogin() async {
@@ -26,17 +29,33 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    // Thực hiện login qua Controller
+    // 1. Thực hiện login qua Controller (Vẫn dùng hàm cũ để không hỏng logic)
     User? user = await _authController.handleLogin(username, password);
 
     if (user != null) {
-      // Đăng nhập thành công -> Chuyển sang HomeScreen
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => HomeScreen(user: user)),
-      );
+      // 2. TẠO JWT TOKEN (Lớp bảo mật bổ sung)
+      // Việc tạo token ở đây hoàn toàn độc lập, không đụng chạm vào Object User
+      String token = AuthService.generateToken(user);
+
+      // In ra console để ní kiểm tra, sau này ní có thể lưu vào SharedPreferences
+      debugPrint("Đăng nhập thành công! Token: $token");
+
+      // 3. PHÂN QUYỀN ĐIỀU HƯỚNG
+      if (user.role == 'admin') {
+        // Nếu là Admin thì sang trang quản trị
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => AdminHomeScreen(user: user, token: token)),
+        );
+      } else {
+        // Nếu là User thì sang HomeScreen (Code của các bạn khác vẫn chạy bình thường)
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => HomeScreen(user: user)),
+        );
+      }
     } else {
-      // Thất bại
+      // Đăng nhập thất bại
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Sai tài khoản hoặc mật khẩu!')),
       );
@@ -45,7 +64,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Giữ nguyên giao diện đẹp mắt của bạn ở đây...
+    // Giữ nguyên giao diện Gradient cực đẹp của ní
     return Scaffold(
       body: Container(
         width: double.infinity,

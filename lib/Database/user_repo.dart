@@ -26,4 +26,20 @@ class UserRepo {
     final db = await dbCore.database;
     return await db.insert('users', user.toMap());
   }
+
+  Future<bool> updateUser(User user) async {
+    final db = await dbCore.database;
+    try {
+      int result = await db.update(
+        'users',
+        user.toMap(),
+        where: 'id = ?',
+        whereArgs: [user.id],
+      );
+      return result > 0;
+    } catch (e) {
+      print("Lỗi update DB: $e");
+      return false;
+    }
+  }
 }
