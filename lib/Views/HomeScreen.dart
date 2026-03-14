@@ -14,9 +14,17 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final HomeController _controller = HomeController();
+  late User currentUser;
 
   // Key này cực kỳ quan trọng để "ép" FutureBuilder tải lại dữ liệu
   Key _refreshKey = UniqueKey();
+
+  @override
+  void initState() {
+    super.initState();
+    // 2. Gán giá trị ban đầu từ widget truyền vào
+    currentUser = widget.user;
+  }
 
   // Hàm này sẽ được gọi ngay sau khi đóng màn hình thêm học phần
   void _refreshData() {
@@ -54,12 +62,22 @@ class _HomeScreenState extends State<HomeScreen> {
                       children: [
                         Text(_controller.getGreeting(),
                             style: const TextStyle(color: Colors.white70, fontSize: 16)),
-                        Text(widget.user.displayName,
+                        Text(currentUser.displayName,
                             style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
                       ],
                     ),
                     GestureDetector(
-                      onTap: () => _controller.navigateToProfile(context, widget.user),
+                      onTap: () async {
+                        // 3. Đợi kết quả trả về từ ProfileScreen
+                        User? newUser = await _controller.navigateToProfile(context, currentUser);
+
+                        // 4. Nếu có dữ liệu mới thì cập nhật giao diện ngay
+                        if (newUser != null) {
+                          setState(() {
+                            currentUser = newUser;
+                          });
+                        }
+                      },
                       child: const CircleAvatar(
                         radius: 25,
                         backgroundColor: Colors.white24,
@@ -81,7 +99,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       const Icon(Icons.local_fire_department, color: Colors.orangeAccent, size: 30),
                       const SizedBox(width: 10),
                       Text(
-                        "${widget.user.streakCount} Ngày liên tiếp",
+                        "${currentUser.streakCount} Ngày liên tiếp",
                         style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600),
                       ),
                     ],

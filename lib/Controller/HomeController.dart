@@ -3,14 +3,19 @@ import 'package:quizz/Database/lesson_repo.dart';
 import 'package:quizz/Models/Lesson.dart';
 import 'package:quizz/Views/AddFillLessonScreen.dart';
 import 'package:quizz/Views/AddLessonScreen.dart';
+import 'package:quizz/Views/ProfileScreen.dart';
 import '../Models/User.dart';
 
 class HomeController {
   final LessonRepo _lessonRepo = LessonRepo();
   // Logic điều hướng sang trang Profile
-  void navigateToProfile(BuildContext context, User user) {
-    print("Điều hướng tới Profile của: ${user.displayName}");
-    // Sau này: Navigator.push(context, MaterialPageRoute(builder: (_) => ProfileScreen(user: user)));
+  Future<User?> navigateToProfile(BuildContext context, User user) async {
+    // await kết quả trả về từ Navigator.pop của trang Profile
+    final updatedUser = await Navigator.push<User>(
+      context,
+      MaterialPageRoute(builder: (_) => ProfileScreen(user: user)),
+    );
+    return updatedUser;
   }
 
   // Logic điều hướng sang trang thêm câu hỏi
