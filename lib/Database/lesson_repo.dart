@@ -36,6 +36,17 @@ class LessonRepo {
     return List.generate(maps.length, (i) => Lesson.fromMap(maps[i]));
   }
 
+  Future<List<Lesson>> getAllLessonsAdmin() async {
+    final db = await dbCore.database;
+
+    final List<Map<String, dynamic>> maps = await db.query(
+      'lessons',
+      orderBy: 'id DESC', // vẫn giữ sort mới nhất lên đầu
+    );
+
+    return maps.map((e) => Lesson.fromMap(e)).toList();
+  }
+
   // Trong class LessonRepo
   Future<void> deleteLesson(int lessonId) async {
     final db = await dbCore.database;
