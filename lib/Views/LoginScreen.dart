@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:quizz/Views/AdminHomeScreen.dart';
+import 'package:quizz/Views/RegisterScreen.dart';
 import '../Controller/AuthController.dart';
 import '../Models/User.dart';
 import '../Service/AuthService.dart';
@@ -66,6 +67,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     // Giữ nguyên giao diện Gradient cực đẹp của ní
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       body: Container(
         width: double.infinity,
         decoration: BoxDecoration(
@@ -81,14 +83,14 @@ class _LoginScreenState extends State<LoginScreen> {
             children: [
               const Icon(Icons.lock_outline, color: Colors.white, size: 80),
               const SizedBox(height: 20),
-              const Text("LEARN & STREAK",
+              const Text("Quizz",
                   style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
               const SizedBox(height: 40),
               TextField(
                 controller: _userController,
                 style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
-                  hintText: "Username",
+                  hintText: "Tên Đăng Nhập",
                   hintStyle: const TextStyle(color: Colors.white70),
                   prefixIcon: const Icon(Icons.person, color: Colors.white),
                   filled: true,
@@ -102,7 +104,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 obscureText: true,
                 style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
-                  hintText: "Password",
+                  hintText: "Mật Khẩu",
                   hintStyle: const TextStyle(color: Colors.white70),
                   prefixIcon: const Icon(Icons.lock, color: Colors.white),
                   filled: true,
@@ -121,7 +123,38 @@ class _LoginScreenState extends State<LoginScreen> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                   ),
                   onPressed: _handleLogin,
-                  child: const Text("LOGIN", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  child: const Text("Đăng Nhập", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                ),
+              ),
+              // Thêm đoạn này vào dưới cùng của Column trong LoginScreen.dart
+              const SizedBox(height: 20),
+              GestureDetector(
+                onTap: () async {
+                  // 1. Chuyển sang trang đăng ký và đợi dữ liệu trả về
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const RegisterScreen(),
+                  ));
+
+                  // 2. Nếu đăng ký thành công, fill dữ liệu vào ô nhập
+                  if (result != null && result is Map) {
+                    setState(() {
+                      _userController.text = result['user'];
+                      _passController.text = result['pass'];
+                    });
+                  }
+                },
+                child: RichText(
+                  text: const TextSpan(
+                    text: "Chưa có tài khoản? ",
+                    style: TextStyle(color: Colors.white70),
+                    children: [
+                      TextSpan(
+                        text: "Đăng ký ngay",
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, decoration: TextDecoration.underline),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
