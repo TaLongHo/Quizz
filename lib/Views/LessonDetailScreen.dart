@@ -2,65 +2,97 @@ import 'package:flutter/material.dart';
 import 'package:quizz/Database/lesson_repo.dart';
 import 'package:quizz/Models/Lesson.dart';
 import 'package:quizz/Models/Question.dart';
+import 'package:quizz/Views/QuizScreen.dart';
+import 'package:quizz/Views/UpdateQuizScreen.dart';
 
-import 'QuizScreen.dart';
-
-class LessonDetailScreen extends StatelessWidget {
+class LessonDetailScreen extends StatefulWidget {
   final Lesson lesson;
-  final LessonRepo _repo = LessonRepo();
 
-  LessonDetailScreen({super.key, required this.lesson});
+  const LessonDetailScreen({super.key, required this.lesson});
+
+  @override
+  State<LessonDetailScreen> createState() => _LessonDetailScreenState();
+}
+
+class _LessonDetailScreenState extends State<LessonDetailScreen> {
+  final LessonRepo _repo = LessonRepo();
+  Key _refreshKey = UniqueKey();
+
+  void _refresh() => setState(() => _refreshKey = UniqueKey());
+
+  // ─── DELETE QUESTION ─────────────────────────
+  Future<void> _deleteQuestion(Question q) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Xóa câu hỏi"),
+        content: Text('Bạn có chắc muốn xóa:\n"${q.content}" ?'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text("HỦY")),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child:
+              const Text("XÓA", style: TextStyle(color: Colors.red))),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    await _repo.deleteQuestion(q.id!);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Đã xóa câu hỏi")),
+    );
+
+    _refresh();
+  }
 
   @override
   Widget build(BuildContext context) {
-    // Xác định tên loại để hiển thị lên AppBar
-    final String typeName = lesson.type == 'abc' ? "Trắc nghiệm" : "Điền từ";
-    final Color themeColor = lesson.type == 'abc' ? Colors.blue[900]! : Colors.green[700]!;
+    final String typeName =
+    widget.lesson.type == 'quiz' ? "Trắc nghiệm" : "Điền từ";
+    final Color themeColor = widget.lesson.type == 'quiz'
+        ? Colors.blue[900]!
+        : Colors.green[700]!;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F2F5), // Nền xám nhạt cho đỡ mỏi mắt
+      backgroundColor: const Color(0xFFF0F2F5),
       appBar: AppBar(
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(lesson.title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            Text(
-                "Loại: $typeName",
-                style: const TextStyle(fontSize: 12, color: Colors.white70, fontWeight: FontWeight.normal)
-            ),
+            Text(widget.lesson.title,
+                style:
+                const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Text("Loại: $typeName",
+                style:
+                const TextStyle(fontSize: 12, color: Colors.white70)),
           ],
         ),
         backgroundColor: themeColor,
-        elevation: 0,
       ),
+
+      // ─── BODY ─────────────────────────
       body: FutureBuilder<List<Question>>(
-        future: _repo.getQuestionsByLesson(lesson.id!),
+        key: _refreshKey,
+        future: _repo.getQuestionsByLesson(widget.lesson.id!),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
 
           final questions = snapshot.data ?? [];
+
           if (questions.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.notes_rounded, size: 60, color: Colors.grey[400]),
-                  const SizedBox(height: 10),
-                  const Text("Học phần này chưa có câu hỏi nào.", style: TextStyle(color: Colors.grey)),
-                ],
-              ),
-            );
+            return const Center(child: Text("Chưa có câu hỏi"));
           }
 
-          // XỬ LÝ NHIỀU CÂU HỎI: Sử dụng ListView.builder giúp tối ưu bộ nhớ
-          // Chỉ những câu hỏi đang hiện trên màn hình mới được render.
           return ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 20),
+            padding: const EdgeInsets.all(16),
             itemCount: questions.length,
-            // Thêm hiệu ứng vật lý để cuộn mượt hơn trên mobile
-            physics: const BouncingScrollPhysics(),
             itemBuilder: (context, index) {
               final q = questions[index];
               return _buildQuestionCard(index + 1, q, themeColor);
@@ -68,23 +100,25 @@ class LessonDetailScreen extends StatelessWidget {
           );
         },
       ),
+
+      // ─── START QUIZ ─────────────────────────
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => QuizScreen(lesson: lesson), // Chuyển sang màn hình làm bài
+              builder: (_) => QuizScreen(lesson: widget.lesson),
             ),
           );
         },
-        label: const Text("Bắt đầu học ngay"),
-        icon: const Icon(Icons.play_lesson),
+        label: const Text("Bắt đầu học"),
+        icon: const Icon(Icons.play_arrow),
         backgroundColor: themeColor,
       ),
     );
   }
 
-  // Tách Widget Card ra để code sạch sẽ, dễ bảo trì
+  // ─── CARD ─────────────────────────
   Widget _buildQuestionCard(int number, Question q, Color color) {
     return Container(
       margin: const EdgeInsets.only(bottom: 15),
@@ -95,73 +129,67 @@ class LessonDetailScreen extends StatelessWidget {
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
+          )
         ],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(15),
-        child: IntrinsicHeight( // Giúp thanh màu bên cạnh cao bằng Card
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Thanh màu chỉ thị bên trái
-              Container(width: 6, color: color),
+      child: Padding(
+        padding: const EdgeInsets.all(15),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("CÂU $number",
+                style:
+                TextStyle(fontWeight: FontWeight.bold, color: color)),
+            const SizedBox(height: 8),
 
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(15),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text("CÂU HỎI $number",
-                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: color)),
-                          const Icon(Icons.check_circle_outline, size: 16, color: Colors.green),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        q.content,
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.black87),
-                      ),
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 10),
-                        child: Divider(height: 1),
-                      ),
-                      RichText(
-                        text: TextSpan(
-                          style: const TextStyle(fontSize: 14, color: Colors.black87),
-                          children: [
-                            const TextSpan(text: "Đáp án: ", style: TextStyle(fontWeight: FontWeight.bold)),
-                            TextSpan(text: q.answer, style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
-                          ],
-                        ),
-                      ),
+            Text(q.content, style: const TextStyle(fontSize: 16)),
 
-                      // Hiển thị lựa chọn nếu là trắc nghiệm và có dữ liệu
-                      if (lesson.type == 'abc' && (q.options?.isNotEmpty ?? false)) ...[
-                        const SizedBox(height: 8),
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[50],
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            "Gợi ý: ${q.options}",
-                            style: TextStyle(fontSize: 13, color: Colors.grey[600], fontStyle: FontStyle.italic),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
+            const Divider(),
+
+            Text("Đáp án: ${q.answer}",
+                style: const TextStyle(
+                    color: Colors.green, fontWeight: FontWeight.bold)),
+
+            if (widget.lesson.type == 'quiz' &&
+                (q.options?.isNotEmpty ?? false))
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text("Options: ${q.options}",
+                    style: const TextStyle(color: Colors.grey)),
               ),
-            ],
-          ),
+
+            const SizedBox(height: 8),
+
+            // ─── ACTION BUTTONS ─────────────────
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                // EDIT
+                IconButton(
+                  icon: const Icon(Icons.edit, color: Colors.orange),
+                  onPressed: () async {
+                    final updated = await Navigator.push<bool>(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            UpdateQuizScreen(lesson: widget.lesson),
+                      ),
+                    );
+
+                    if (updated == true) {
+                      _refresh();
+                    }
+                  },
+                ),
+
+                // DELETE
+                IconButton(
+                  icon: const Icon(Icons.delete, color: Colors.red),
+                  onPressed: () => _deleteQuestion(q),
+                ),
+              ],
+            )
+          ],
         ),
       ),
     );
