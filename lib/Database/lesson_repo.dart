@@ -1,21 +1,18 @@
 import '../Models/Lesson.dart';
-import '../Models/Question.dart'; // Đảm bảo bạn đã có file này
+import '../Models/Question.dart';
 import 'db_core.dart';
 
 class LessonRepo {
   final dbCore = DbCore.instance;
 
-  Future<void> saveCompleteLesson(Lesson lesson, List<Question> questions) async {
+  // ─── LESSON ───────────────────────────────────────────────────────────────
+
+  Future<void> saveCompleteLesson(
+      Lesson lesson, List<Question> questions) async {
     final db = await dbCore.database;
-
-    // Dùng Transaction để đảm bảo nếu lưu câu hỏi lỗi thì học phần cũng không được tạo
     await db.transaction((txn) async {
-      // 1. Lưu Lesson
       int lessonId = await txn.insert('lessons', lesson.toMap());
-
-      // 2. Lưu danh sách Question
       for (var q in questions) {
-        // Gán lessonId vừa tạo cho từng câu hỏi
         var qMap = q.toMap();
         qMap['lesson_id'] = lessonId;
         await txn.insert('questions', qMap);
@@ -23,39 +20,63 @@ class LessonRepo {
     });
   }
 
-  // Lấy toàn bộ danh sách học phần của User
   Future<List<Lesson>> getAllLessons(int userId) async {
     final db = await dbCore.database;
-    final List<Map<String, dynamic>> maps = await db.query(
+    final maps = await db.query(
       'lessons',
       where: 'user_id = ?',
       whereArgs: [userId],
-      orderBy: 'id DESC', // Hiện học phần mới nhất lên đầu
+      orderBy: 'id DESC',
     );
-
-    return List.generate(maps.length, (i) => Lesson.fromMap(maps[i]));
+    return maps.map((e) => Lesson.fromMap(e)).toList();
   }
 
-  // Trong class LessonRepo
+  Future<List<Lesson>> getAllLessonsAdmin() async {
+    final db = await dbCore.database;
+    final maps = await db.query('lessons', orderBy: 'id DESC');
+    return maps.map((e) => Lesson.fromMap(e)).toList();
+  }
+
   Future<void> deleteLesson(int lessonId) async {
     final db = await dbCore.database;
-    // Xóa học phần (Nếu bạn thiết lập ON DELETE CASCADE thì các câu hỏi sẽ tự mất theo)
-    await db.delete(
-      'lessons',
-      where: 'id = ?',
-      whereArgs: [lessonId],
-    );
+    await db.delete('lessons', where: 'id = ?', whereArgs: [lessonId]);
   }
+
+  // ─── QUESTION ─────────────────────────────────────────────────────────────
 
   Future<List<Question>> getQuestionsByLesson(int lessonId) async {
     final db = await dbCore.database;
-    final List<Map<String, dynamic>> maps = await db.query(
+    final maps = await db.query(
       'questions',
       where: 'lesson_id = ?',
       whereArgs: [lessonId],
     );
-
-    return List.generate(maps.length, (i) => Question.fromMap(maps[i]));
+    return maps.map((e) => Question.fromMap(e)).toList();
   }
-  
+
+  Future<int> addQuestion(Question question) async {
+    final db = await dbCore.database;
+    return await db.insert('questions', question.toMap());
+  }
+
+  Future<bool> updateQuestion(Question question) async {
+    final db = await dbCore.database;
+    final result = await db.update(
+      'questions',
+      question.toMap(),
+      where: 'id = ?',
+      whereArgs: [question.id],
+    );
+    return result > 0;
+  }
+
+  Future<bool> deleteQuestion(int questionId) async {
+    final db = await dbCore.database;
+    final result = await db.delete(
+      'questions',
+      where: 'id = ?',
+      whereArgs: [questionId],
+    );
+    return result > 0;
+  }
 }
