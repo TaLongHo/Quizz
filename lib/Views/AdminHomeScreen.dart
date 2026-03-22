@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:quizz/Views/ManageQuizScreen.dart';
 import '../Models/User.dart';
-import 'LoginScreen.dart'; // Đảm bảo import để quay về trang Login
+import 'AddLessonAdminScreen.dart';
+import 'LoginScreen.dart';
+import 'ManageQuizScreen.dart'; // Đảm bảo import để quay về trang Login
 
 class AdminHomeScreen extends StatelessWidget {
   final User user;
@@ -130,6 +131,17 @@ class AdminHomeScreen extends StatelessWidget {
                     sub: "Cấu hình ứng dụng",
                     color: const Color(0xFF64748B),
                     onTap: () {}
+                ),_buildAdminMenu(
+                    icon: Icons.add,
+                    title: "Thêm học phần",
+                    sub: "Thêm học phần mới",
+                    color: const Color(0xFF64748B),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const AddLessonAdminScreen()),
+                      );
+                    }
                 ),
               ],
             ),
