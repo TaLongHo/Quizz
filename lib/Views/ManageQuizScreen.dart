@@ -13,9 +13,27 @@ class ManageQuizScreen extends StatefulWidget {
 
 class _ManageQuizScreenState extends State<ManageQuizScreen> {
   final Quizcontroller _controller = Quizcontroller();
+  final TextEditingController _searchController = TextEditingController();
+
   Key _refreshKey = UniqueKey();
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   void _refreshData() => setState(() => _refreshKey = UniqueKey());
+
+  // Lọc danh sách theo query — chạy phía client, không cần query DB lại
+  List<Lesson> _filterLessons(List<Lesson> lessons) {
+    if (_searchQuery.isEmpty) return lessons;
+    final q = _searchQuery.toLowerCase();
+    return lessons
+        .where((l) => l.title.toLowerCase().contains(q))
+        .toList();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,15 +49,61 @@ class _ManageQuizScreenState extends State<ManageQuizScreen> {
           backgroundColor: Colors.blue[900],
           foregroundColor: Colors.white,
           elevation: 0,
-          bottom: const TabBar(
-            labelColor: Colors.white,
-            unselectedLabelColor: Colors.white54,
-            indicatorColor: Colors.white,
-            indicatorWeight: 3,
-            tabs: [
-              Tab(icon: Icon(Icons.quiz_outlined), text: 'Trắc nghiệm'),
-              Tab(icon: Icon(Icons.text_fields), text: 'Điền từ'),
-            ],
+          bottom: PreferredSize(
+            // Tăng chiều cao để chứa cả TabBar + SearchBar
+            preferredSize: const Size.fromHeight(130),
+            child: Column(
+              children: [
+                // ── Search bar ──────────────────────────────────────────
+                Padding(
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: TextField(
+                    controller: _searchController,
+                    onChanged: (value) =>
+                        setState(() => _searchQuery = value.trim()),
+                    style: const TextStyle(color: Colors.white),
+                    cursorColor: Colors.white,
+                    decoration: InputDecoration(
+                      hintText: 'Tìm kiếm học phần...',
+                      hintStyle:
+                      const TextStyle(color: Colors.white54, fontSize: 14),
+                      prefixIcon:
+                      const Icon(Icons.search, color: Colors.white70),
+                      // Nút xóa — chỉ hiện khi đang gõ
+                      suffixIcon: _searchQuery.isNotEmpty
+                          ? IconButton(
+                        icon: const Icon(Icons.close,
+                            color: Colors.white70, size: 18),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() => _searchQuery = '');
+                        },
+                      )
+                          : null,
+                      filled: true,
+                      fillColor: Colors.white.withOpacity(0.15),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                ),
+                // ── Tab bar ─────────────────────────────────────────────
+                const TabBar(
+                  labelColor: Colors.white,
+                  unselectedLabelColor: Colors.white54,
+                  indicatorColor: Colors.white,
+                  indicatorWeight: 3,
+                  tabs: [
+                    Tab(icon: Icon(Icons.quiz_outlined), text: 'Trắc nghiệm'),
+                    Tab(icon: Icon(Icons.text_fields), text: 'Điền từ'),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
         body: FutureBuilder<Map<String, List<Lesson>>>(
@@ -54,22 +118,26 @@ class _ManageQuizScreenState extends State<ManageQuizScreen> {
             }
 
             final data = snapshot.data ?? {};
-            final quizLessons = data['quiz'] ?? [];
-            final fillLessons = data['fill'] ?? [];
+
+            // Áp dụng filter sau khi đã có data
+            final quizLessons = _filterLessons(data['quiz'] ?? []);
+            final fillLessons = _filterLessons(data['fill'] ?? []);
 
             return TabBarView(
               children: [
-                // Tab Trắc nghiệm
                 _buildLessonList(
                   lessons: quizLessons,
                   type: 'quiz',
-                  emptyMessage: 'Chưa có bộ trắc nghiệm nào',
+                  emptyMessage: _searchQuery.isEmpty
+                      ? 'Chưa có bộ trắc nghiệm nào'
+                      : 'Không tìm thấy kết quả cho "$_searchQuery"',
                 ),
-                // Tab Điền từ
                 _buildLessonList(
                   lessons: fillLessons,
                   type: 'fill',
-                  emptyMessage: 'Chưa có bộ điền từ nào',
+                  emptyMessage: _searchQuery.isEmpty
+                      ? 'Chưa có bộ điền từ nào'
+                      : 'Không tìm thấy kết quả cho "$_searchQuery"',
                 ),
               ],
             );
@@ -91,7 +159,12 @@ class _ManageQuizScreenState extends State<ManageQuizScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              type == 'fill' ? Icons.text_fields : Icons.quiz_outlined,
+              // Nếu đang search → icon tìm kiếm, ngược lại icon mặc định
+              _searchQuery.isNotEmpty
+                  ? Icons.search_off_rounded
+                  : type == 'fill'
+                  ? Icons.text_fields
+                  : Icons.quiz_outlined,
               size: 64,
               color: Colors.grey[300],
             ),
@@ -99,6 +172,7 @@ class _ManageQuizScreenState extends State<ManageQuizScreen> {
             Text(
               emptyMessage,
               style: TextStyle(color: Colors.grey[500], fontSize: 16),
+              textAlign: TextAlign.center,
             ),
           ],
         ),
@@ -113,8 +187,7 @@ class _ManageQuizScreenState extends State<ManageQuizScreen> {
       physics: const BouncingScrollPhysics(),
       itemCount: lessons.length,
       itemBuilder: (context, index) {
-        final lesson = lessons[index];
-        return _buildLessonCard(lesson, themeColor);
+        return _buildLessonCard(lessons[index], themeColor);
       },
     );
   }
@@ -152,7 +225,10 @@ class _ManageQuizScreenState extends State<ManageQuizScreen> {
             size: 24,
           ),
         ),
-        title: Text(
+        title: _searchQuery.isNotEmpty
+        // Highlight chữ khớp với query khi đang search
+            ? _buildHighlightedTitle(lesson.title, _searchQuery)
+            : Text(
           lesson.title,
           style: const TextStyle(
             fontWeight: FontWeight.bold,
@@ -163,12 +239,11 @@ class _ManageQuizScreenState extends State<ManageQuizScreen> {
           'ID: ${lesson.id}  •  ${isFill ? "Điền từ" : "Trắc nghiệm"}',
           style: TextStyle(color: Colors.grey[500], fontSize: 12),
         ),
-        trailing: Icon(Icons.arrow_forward_ios,
-            size: 14, color: Colors.grey[400]),
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16)),
+        trailing:
+        Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey[400]),
+        shape:
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         onTap: () async {
-          // Điều hướng đến màn hình tương ứng
           final deleted = await Navigator.push<bool>(
             context,
             MaterialPageRoute(
@@ -177,12 +252,45 @@ class _ManageQuizScreenState extends State<ManageQuizScreen> {
                   : LessonDetailsScreenAdmin(lesson: lesson),
             ),
           );
-
-          // Nếu admin vừa xóa học phần → reload danh sách
-          if (deleted == true) {
-            _refreshData();
-          }
+          if (deleted == true) _refreshData();
         },
+      ),
+    );
+  }
+
+  // Highlight phần text khớp với query (không phân biệt hoa/thường)
+  Widget _buildHighlightedTitle(String title, String query) {
+    final lowerTitle = title.toLowerCase();
+    final lowerQuery = query.toLowerCase();
+    final matchIndex = lowerTitle.indexOf(lowerQuery);
+
+    if (matchIndex == -1) {
+      return Text(title,
+          style:
+          const TextStyle(fontWeight: FontWeight.bold, fontSize: 15));
+    }
+
+    return RichText(
+      text: TextSpan(
+        style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 15,
+            color: Colors.black87),
+        children: [
+          if (matchIndex > 0)
+            TextSpan(text: title.substring(0, matchIndex)),
+          // Phần khớp → nền vàng
+          TextSpan(
+            text: title.substring(matchIndex, matchIndex + query.length),
+            style: TextStyle(
+              backgroundColor: Colors.amber.shade200,
+              color: Colors.black,
+            ),
+          ),
+          if (matchIndex + query.length < title.length)
+            TextSpan(
+                text: title.substring(matchIndex + query.length)),
+        ],
       ),
     );
   }
