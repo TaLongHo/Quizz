@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:quizz/Database/study_log_repo.dart';
+import 'package:quizz/Service/ThemeService.dart';
 import 'package:quizz/Views/LessonDetailScreen.dart';
 import '../Models/User.dart';
 import '../Models/Lesson.dart';
@@ -7,7 +9,8 @@ import 'FillLessonDetailScreen.dart';
 
 class HomeScreen extends StatefulWidget {
   final User user;
-  const HomeScreen({super.key, required this.user});
+  final String token;
+  const HomeScreen({super.key, required this.user, required this.token});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -16,28 +19,46 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final HomeController _controller = HomeController();
   late User currentUser;
-
-  // Key này cực kỳ quan trọng để "ép" FutureBuilder tải lại dữ liệu
   Key _refreshKey = UniqueKey();
 
   @override
   void initState() {
     super.initState();
-    // 2. Gán giá trị ban đầu từ widget truyền vào
     currentUser = widget.user;
+    _initTestData();
   }
 
-  // Hàm này sẽ được gọi ngay sau khi đóng màn hình thêm học phần
+  Future<void> _initTestData() async {
+    final StudyLogRepo _logRepo = StudyLogRepo();
+    await _logRepo.insertTestStreak(currentUser.id!);
+    setState(() {
+      currentUser = User(
+        id: currentUser.id,
+        username: currentUser.username,
+        password: currentUser.password,
+        displayName: currentUser.displayName,
+        gender: currentUser.gender,
+        birthday: currentUser.birthday,
+        streakCount: 6,
+        lastStudyDate: '2026-03-23',
+      );
+    });
+    _refreshData();
+  }
+
   void _refreshData() {
     setState(() {
-      _refreshKey = UniqueKey(); // Tạo key mới làm FutureBuilder nhận diện có sự thay đổi
+      _refreshKey = UniqueKey();
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    bool isDark = ThemeService.isDark;
+    final theme = Theme.of(context);
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: Column(
         children: [
           // 1. Header Section
@@ -46,7 +67,9 @@ class _HomeScreenState extends State<HomeScreen> {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
-                colors: [Colors.blue[900]!, Colors.purple[800]!],
+                colors: isDark
+                    ? [const Color(0xFF1A237E), const Color(0xFF4A148C)]
+                    : [Colors.blue[900]!, Colors.purple[800]!],
               ),
               borderRadius: const BorderRadius.only(
                 bottomLeft: Radius.circular(30),
@@ -69,10 +92,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     GestureDetector(
                       onTap: () async {
-                        // 3. Đợi kết quả trả về từ ProfileScreen
                         User? newUser = await _controller.navigateToProfile(context, currentUser);
-
-                        // 4. Nếu có dữ liệu mới thì cập nhật giao diện ngay
                         if (newUser != null) {
                           setState(() {
                             currentUser = newUser;
@@ -88,24 +108,47 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
                 const SizedBox(height: 25),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(20),
+                GestureDetector(
+                  onTap: () => _controller.showStreakCalendar(
+                      context,
+                      currentUser,
+                          (updatedUser) {
+                        setState(() {
+                          currentUser = updatedUser;
+                        });
+                      }
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.local_fire_department, color: Colors.orangeAccent, size: 30),
-                      const SizedBox(width: 10),
-                      Text(
-                        "${currentUser.streakCount} Ngày liên tiếp",
-                        style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600),
-                      ),
-                    ],
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.white.withOpacity(0.2)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.local_fire_department, color: Colors.orangeAccent, size: 30),
+                        const SizedBox(width: 10),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "${currentUser.streakCount} Ngày liên tiếp",
+                              style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600),
+                            ),
+                            const Text(
+                              "Chạm để xem lịch sử học",
+                              style: TextStyle(color: Colors.white70, fontSize: 12),
+                            ),
+                          ],
+                        ),
+                        const Spacer(),
+                        const Icon(Icons.calendar_month, color: Colors.white70, size: 20),
+                      ],
+                    ),
                   ),
-                )
+                ),
               ],
             ),
           ),
@@ -117,66 +160,71 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text("Hành động nhanh",
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+                  Text("Hành động nhanh",
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.white : Colors.black87)),
                   const SizedBox(height: 20),
 
-                  // Nút Thêm bộ câu hỏi
                   GestureDetector(
                     onTap: () async {
-                      // Đợi người dùng thực hiện xong thao tác ở màn hình thêm/popup
-                      await _controller.navigateToAddLesson(context, widget.user);
-
-                      // Khi Navigator.pop thực hiện ở màn hình kia, dòng này sẽ chạy ngay lập tức
+                      await _controller.navigateToAddLesson(context, currentUser, _refreshData);
                       _refreshData();
                     },
                     child: Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: theme.cardColor,
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
-                          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 5))
+                          if(!isDark) BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 5))
                         ],
+                        border: isDark ? Border.all(color: Colors.white.withOpacity(0.05)) : null,
                       ),
                       child: Row(
                         children: [
                           Container(
                             padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(color: Colors.blue[50], borderRadius: BorderRadius.circular(15)),
-                            child: Icon(Icons.add_box_rounded, color: Colors.blue[800], size: 30),
+                            decoration: BoxDecoration(
+                                color: isDark ? Colors.blue.withOpacity(0.1) : Colors.blue[50],
+                                borderRadius: BorderRadius.circular(15)
+                            ),
+                            child: Icon(Icons.add_box_rounded, color: isDark ? Colors.blue[300] : Colors.blue[800], size: 30),
                           ),
                           const SizedBox(width: 20),
-                          const Column(
+                          // --- ĐÃ XÓA TỪ KHÓA CONST Ở ĐÂY ĐỂ FIX LỖI ---
+                          Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text("Thêm bộ câu hỏi mới", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                              Text("Tạo chủ đề học tập của riêng bạn", style: TextStyle(color: Colors.grey)),
+                              Text("Thêm học phần mới",
+                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold,
+                                      color: isDark ? Colors.white : Colors.black87)),
+                              Text("Tạo chủ đề học tập của riêng bạn",
+                                  style: TextStyle(color: isDark ? Colors.white60 : Colors.grey)),
                             ],
                           ),
                           const Spacer(),
-                          const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+                          Icon(Icons.arrow_forward_ios, size: 16, color: isDark ? Colors.white30 : Colors.grey),
                         ],
                       ),
                     ),
                   ),
 
                   const SizedBox(height: 30),
-                  const Text("Học phần của bạn",
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+                  Text("Học phần của bạn",
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.white : Colors.black87)),
                   const SizedBox(height: 10),
 
-                  // TabBar phân loại học phần
                   Expanded(
                     child: DefaultTabController(
                       length: 2,
                       child: Column(
                         children: [
                           TabBar(
-                            labelColor: Colors.blue[900],
+                            labelColor: isDark ? Colors.blue[300] : Colors.blue[900],
                             unselectedLabelColor: Colors.grey,
-                            indicatorColor: Colors.blue[900],
+                            indicatorColor: isDark ? Colors.blue[300] : Colors.blue[900],
                             tabs: const [
                               Tab(text: "Trắc nghiệm"),
                               Tab(text: "Điền từ"),
@@ -184,13 +232,12 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                           Expanded(
                             child: FutureBuilder<Map<String, List<Lesson>>>(
-                              key: _refreshKey, // Thêm key để nó tự động rebuild
+                              key: _refreshKey,
                               future: _controller.getCategorizedLessons(widget.user.id!),
                               builder: (context, snapshot) {
                                 if (snapshot.connectionState == ConnectionState.waiting) {
                                   return const Center(child: CircularProgressIndicator());
                                 }
-
                                 final quizList = snapshot.data?['quiz'] ?? [];
                                 final fillList = snapshot.data?['fill'] ?? [];
 
@@ -216,8 +263,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Widget hiển thị danh sách Card bài học
+  // --- HÀM BUILD LESSON LIST ĐÃ ĐƯỢC TỐI ƯU DARK MODE ---
   Widget _buildLessonList(List<Lesson> lessons, String emptyMessage) {
+    bool isDark = ThemeService.isDark;
+
     if (lessons.isEmpty) {
       return Center(child: Text(emptyMessage, style: const TextStyle(color: Colors.grey)));
     }
@@ -229,15 +278,15 @@ class _HomeScreenState extends State<HomeScreen> {
         final lesson = lessons[index];
 
         return Dismissible(
-          key: Key(lesson.id.toString()), // Key duy nhất theo ID học phần
-          direction: DismissDirection.endToStart, // Vuốt từ phải sang trái
+          key: Key(lesson.id.toString()),
+          direction: DismissDirection.endToStart,
           confirmDismiss: (direction) async {
-            // Hiện hộp thoại xác nhận trước khi xóa
             return await showDialog(
               context: context,
               builder: (context) => AlertDialog(
-                title: const Text("Xác nhận xóa"),
-                content: Text("Bạn có chắc chắn muốn xóa bộ '${lesson.title}' không?"),
+                backgroundColor: Theme.of(context).cardColor, // Đổi màu nền dialog
+                title: Text("Xác nhận xóa", style: TextStyle(color: isDark ? Colors.white : Colors.black)),
+                content: Text("Bạn có chắc chắn muốn xóa bộ '${lesson.title}' không?", style: TextStyle(color: isDark ? Colors.white70 : Colors.black87)),
                 actions: [
                   TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("HỦY")),
                   TextButton(
@@ -251,7 +300,7 @@ class _HomeScreenState extends State<HomeScreen> {
           onDismissed: (direction) async {
             bool success = await _controller.deleteLesson(lesson.id!);
             if (success) {
-              _refreshData(); // Load lại danh sách ngay lập tức
+              _refreshData();
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text("Đã xóa học phần")),
               );
@@ -268,19 +317,33 @@ class _HomeScreenState extends State<HomeScreen> {
             child: const Icon(Icons.delete, color: Colors.white),
           ),
           child: Card(
+            elevation: 0,
+            color: Theme.of(context).cardColor,
             margin: const EdgeInsets.only(bottom: 10),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(15),
+              // Thêm viền nhẹ khi ở Dark Mode để tách Card ra khỏi nền
+              side: isDark
+                  ? BorderSide(color: Colors.white.withOpacity(0.1), width: 1)
+                  : const BorderSide(color: Colors.transparent), // Thay BorderSide.none
+            ),
             child: ListTile(
               leading: CircleAvatar(
-                backgroundColor: lesson.type == 'quiz' ? Colors.blue[50] : Colors.green[50],
+                backgroundColor: isDark
+                    ? (lesson.type == 'quiz' ? Colors.blue.withOpacity(0.1) : Colors.green.withOpacity(0.1))
+                    : (lesson.type == 'quiz' ? Colors.blue[50] : Colors.green[50]),
                 child: Icon(
                   lesson.type == 'quiz' ? Icons.quiz_outlined : Icons.text_fields_outlined,
-                  color: lesson.type == 'quiz' ? Colors.blue[800] : Colors.green[800],
+                  color: isDark
+                      ? (lesson.type == 'quiz' ? Colors.blue[300] : Colors.green[300])
+                      : (lesson.type == 'quiz' ? Colors.blue[800] : Colors.green[800]),
                 ),
               ),
-              title: Text(lesson.title, style: const TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: Text("Loại: ${lesson.type == 'quiz' ? 'Trắc nghiệm' : 'Điền từ'}"),
-              trailing: const Icon(Icons.arrow_right, color: Colors.grey),
+              title: Text(lesson.title,
+                  style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)),
+              subtitle: Text("Loại: ${lesson.type == 'quiz' ? 'Trắc nghiệm' : 'Điền từ'}",
+                  style: TextStyle(color: isDark ? Colors.white60 : Colors.black54)),
+              trailing: Icon(Icons.arrow_right, color: isDark ? Colors.white30 : Colors.grey),
               onTap: () {
                 if (lesson.type == 'fill') {
                   Navigator.push(context, MaterialPageRoute(
