@@ -24,12 +24,12 @@ class Lesson {
   }
 
   Map<String, dynamic> toMap() {
-    return {
-      'id': id,
+    final map = <String, dynamic>{
       'user_id': userId,
       'title': title,
       'type': type,
-      // 'created_at' thường để DB tự sinh
     };
+    if (id != null) map['id'] = id; // ✅ Chỉ thêm khi update
+    return map;
   }
 }

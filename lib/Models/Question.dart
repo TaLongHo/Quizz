@@ -24,13 +24,14 @@ class Question {
   }
 
   Map<String, dynamic> toMap() {
-    return {
-      'id': id,
+    final map = <String, dynamic>{
       'lesson_id': lessonId,
       'content': content,
       'answer': answer,
       'options': options,
     };
+    if (id != null) map['id'] = id; // ✅
+    return map;
   }
 
   // Hàm hỗ trợ tách chuỗi "A|B|C|D" thành danh sách List<String>
