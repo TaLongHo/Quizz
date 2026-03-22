@@ -169,10 +169,13 @@ class _AddFillLessonScreenState extends State<AddFillLessonScreen> {
                       bool success = await _controller.saveToDatabase(
                           _titleController.text,
                           widget.user.id!,
-                          type: 'fill' // Quan trọng: type phải là fill
+                          type: 'fill'
                       );
                       if (success) {
-                        if (mounted) Navigator.pop(context, true); // Trả về true để Home refresh
+                        if (mounted) {
+                          // Trả về true để báo hiệu cho màn hình trước đó biết cần load lại dữ liệu
+                          Navigator.pop(context, true);
+                        }
                       }
                     },
                   ),

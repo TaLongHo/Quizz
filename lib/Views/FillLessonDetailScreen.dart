@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:quizz/Views/FillQuizScreen.dart';
 import '../Database/lesson_repo.dart';
 import '../Models/Lesson.dart';
 import '../Models/Question.dart';
@@ -94,11 +95,38 @@ class _FillLessonDetailScreenState extends State<FillLessonDetailScreen> {
           if (questions.isEmpty) return const Center(child: Text("Danh sách trống"));
 
           return ListView.builder(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 120),
             itemCount: questions.length,
             itemBuilder: (ctx, index) => _buildFillCard(index + 1, questions[index]),
           );
         },
+      ),
+      floatingActionButton: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          FloatingActionButton.extended(
+            heroTag: "addFillBtn",
+            onPressed: () => _showQuestionDialog(),
+            label: const Text("THÊM CÂU HỎI", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+            icon: const Icon(Icons.add_circle, color: Colors.white),
+            backgroundColor: Colors.orange[800], // Màu cam cho nổi bật giống bên Quiz
+          ),
+          const SizedBox(height: 12),
+          FloatingActionButton.extended(
+            heroTag: "playFillBtn",
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => FillQuizScreen(lesson: widget.lesson), // Điều hướng sang màn hình điền từ
+                ),
+              );
+            },
+            label: const Text("BẮT ĐẦU HỌC", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+            icon: const Icon(Icons.play_arrow_rounded, color: Colors.white),
+            backgroundColor: isDark ? const Color(0xFF1A237E) : Colors.green[800],
+          ),
+        ],
       ),
     );
   }

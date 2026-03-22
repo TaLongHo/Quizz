@@ -34,13 +34,12 @@ class HomeController {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
       ),
-      builder: (context) {
+      builder: (bottomSheetContext) { // Đặt tên khác để tránh nhầm với context bên ngoài
         return Container(
           padding: const EdgeInsets.only(top: 15, left: 25, right: 25, bottom: 40),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Thanh kéo nhỏ phía trên
               Container(
                 width: 40,
                 height: 4,
@@ -60,7 +59,7 @@ class HomeController {
               ),
               const SizedBox(height: 25),
 
-              // Lựa chọn Trắc nghiệm
+              // 1. Lựa chọn Trắc nghiệm
               _buildOptionCard(
                 context,
                 title: "Trắc nghiệm",
@@ -68,21 +67,18 @@ class HomeController {
                 icon: Icons.quiz_rounded,
                 iconColor: Colors.blueAccent,
                 onTap: () async {
-                  Navigator.pop(context); // Đóng BottomSheet trước
+                  Navigator.pop(bottomSheetContext); // Đóng BottomSheet
                   final result = await Navigator.push(
                     context,
                     MaterialPageRoute(builder: (_) => AddLessonScreen(user: user)),
                   );
-                  // Nếu AddLessonScreen trả về true (đã lưu thành công)
-                  if (result == true) {
-                    onRefresh(); // Gọi callback để refresh HomeScreen
-                  }
+                  if (result == true) onRefresh(); // Refresh khi thêm thành công
                 },
               ),
 
               const SizedBox(height: 15),
 
-              // Lựa chọn Điền từ
+              // 2. Lựa chọn Điền từ (FIX CHỖ NÀY)
               _buildOptionCard(
                 context,
                 title: "Điền từ",
@@ -90,11 +86,15 @@ class HomeController {
                 icon: Icons.history_edu_rounded,
                 iconColor: Colors.greenAccent,
                 onTap: () async {
-                  await Navigator.push(
+                  Navigator.pop(bottomSheetContext); // PHẢI đóng BottomSheet trước khi Push
+                  final result = await Navigator.push(
                     context,
                     MaterialPageRoute(builder: (_) => AddFillLessonScreen(user: user)),
                   );
-                  if (context.mounted) Navigator.pop(context);
+                  // Kiểm tra kết quả trả về từ AddFillLessonScreen
+                  if (result == true) {
+                    onRefresh(); // Kích hoạt refresh danh sách ở HomeScreen
+                  }
                 },
               ),
             ],
