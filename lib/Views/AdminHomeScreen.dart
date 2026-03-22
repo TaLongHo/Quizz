@@ -17,7 +17,7 @@ class AdminHomeScreen extends StatelessWidget {
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text("Đăng xuất"),
-        content: const Text("Ní có chắc muốn thoát khỏi phiên làm việc quản trị không?"),
+        content: const Text("Bạn có chắc muốn thoát khỏi phiên làm việc quản trị không?"),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),

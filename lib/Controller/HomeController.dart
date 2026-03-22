@@ -1,13 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:quizz/Database/lesson_repo.dart';
+import 'package:quizz/Database/study_log_repo.dart';
+import 'package:quizz/Database/user_repo.dart';
 import 'package:quizz/Models/Lesson.dart';
 import 'package:quizz/Views/AddFillLessonScreen.dart';
 import 'package:quizz/Views/AddLessonScreen.dart';
 import 'package:quizz/Views/ProfileScreen.dart';
 import '../Models/User.dart';
+import '../Views/StreakCalendarModal.dart';
+import 'package:quizz/Service/ThemeService.dart';
 
 class HomeController {
   final LessonRepo _lessonRepo = LessonRepo();
+  final StudyLogRepo _logRepo = StudyLogRepo();
+  final UserRepo _userRepo = UserRepo();
   // Logic điều hướng sang trang Profile
   Future<User?> navigateToProfile(BuildContext context, User user) async {
     // await kết quả trả về từ Navigator.pop của trang Profile
@@ -19,39 +25,75 @@ class HomeController {
   }
 
   // Logic điều hướng sang trang thêm câu hỏi
-  Future<void> navigateToAddLesson(BuildContext context, User user) async {
+  Future<void> navigateToAddLesson(BuildContext context, User user, VoidCallback onRefresh) async {
+    final isDark = ThemeService.isDark;
+
     await showModalBottomSheet(
       context: context,
+      backgroundColor: Theme.of(context).cardColor, // Đồng bộ màu nền với App
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
       ),
       builder: (context) {
         return Container(
-          padding: const EdgeInsets.all(25),
+          padding: const EdgeInsets.only(top: 15, left: 25, right: 25, bottom: 40),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text("Chọn loại học phần",
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 20),
-              ListTile(
-                leading: const Icon(Icons.quiz, color: Colors.blue),
-                title: const Text("Trắc nghiệm (4 đáp án)"),
-                onTap:  () async {
-                  await Navigator.push(context, MaterialPageRoute(
-                      builder: (_) => AddLessonScreen(user: user)));
+              // Thanh kéo nhỏ phía trên
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.white24 : Colors.grey[300],
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              const SizedBox(height: 25),
+              Text(
+                "Chọn loại học phần",
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 25),
 
-                  // 2. Sau khi trang AddLesson đóng, mới đóng BottomSheet
-                  if (context.mounted) Navigator.pop(context);
+              // Lựa chọn Trắc nghiệm
+              _buildOptionCard(
+                context,
+                title: "Trắc nghiệm",
+                subtitle: "Câu hỏi 4 đáp án, chọn 1 đáp án đúng",
+                icon: Icons.quiz_rounded,
+                iconColor: Colors.blueAccent,
+                onTap: () async {
+                  Navigator.pop(context); // Đóng BottomSheet trước
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => AddLessonScreen(user: user)),
+                  );
+                  // Nếu AddLessonScreen trả về true (đã lưu thành công)
+                  if (result == true) {
+                    onRefresh(); // Gọi callback để refresh HomeScreen
+                  }
                 },
               ),
-              ListTile(
-                leading: const Icon(Icons.edit, color: Colors.green),
-                title: const Text("Điền từ (Trả lời ngắn)"),
-                onTap: () async {
-                  await Navigator.push(context, MaterialPageRoute(
-                      builder: (_) => AddFillLessonScreen(user: user)));
 
+              const SizedBox(height: 15),
+
+              // Lựa chọn Điền từ
+              _buildOptionCard(
+                context,
+                title: "Điền từ",
+                subtitle: "Tự nhập câu trả lời chính xác",
+                icon: Icons.history_edu_rounded,
+                iconColor: Colors.greenAccent,
+                onTap: () async {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => AddFillLessonScreen(user: user)),
+                  );
                   if (context.mounted) Navigator.pop(context);
                 },
               ),
@@ -59,6 +101,63 @@ class HomeController {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildOptionCard(
+      BuildContext context, {
+        required String title,
+        required String subtitle,
+        required IconData icon,
+        required Color iconColor,
+        required VoidCallback onTap,
+      }) {
+    final isDark = ThemeService.isDark;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(15),
+        decoration: BoxDecoration(
+          color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey[100],
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isDark ? Colors.white10 : Colors.transparent,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: iconColor.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(15),
+              ),
+              child: Icon(icon, color: iconColor, size: 28),
+            ),
+            const SizedBox(width: 15),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isDark ? Colors.white60 : Colors.black54,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.arrow_forward_ios, size: 14, color: isDark ? Colors.white30 : Colors.grey),
+          ],
+        ),
+      ),
     );
   }
 
@@ -91,6 +190,31 @@ class HomeController {
       return true;
     } catch (e) {
       return false;
+    }
+  }
+
+  Future<void> showStreakCalendar(BuildContext context, User user, Function(User) onRefreshUI) async {
+    // 1. Lấy dữ liệu học tập
+    List<String> dates = await _logRepo.getStudyDates(user.id!);
+
+    // 2. Lấy User mới nhất để cập nhật StreakCount thực tế
+    User? latestUser = await _userRepo.getUserById(user.id!);
+
+    if (latestUser != null) {
+      // Cập nhật lại UI màn hình HomeScreen thông qua callback
+      onRefreshUI(latestUser);
+
+      if (context.mounted) {
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (context) => StreakCalendarModal(
+            studyDates: dates,
+            streakCount: latestUser.streakCount,
+          ),
+        );
+      }
     }
   }
 }

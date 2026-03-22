@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:quizz/Service/SessionService.dart';
 import 'package:quizz/Views/AdminHomeScreen.dart';
 import 'package:quizz/Views/RegisterScreen.dart';
 import '../Controller/AuthController.dart';
@@ -38,6 +39,8 @@ class _LoginScreenState extends State<LoginScreen> {
       // Việc tạo token ở đây hoàn toàn độc lập, không đụng chạm vào Object User
       String token = AuthService.generateToken(user);
 
+      await SessionService.saveSession(user.id!, token);
+
       // In ra console để ní kiểm tra, sau này ní có thể lưu vào SharedPreferences
       debugPrint("Đăng nhập thành công! Token: $token");
 
@@ -52,7 +55,7 @@ class _LoginScreenState extends State<LoginScreen> {
         // Nếu là User thì sang HomeScreen (Code của các bạn khác vẫn chạy bình thường)
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => HomeScreen(user: user)),
+          MaterialPageRoute(builder: (context) => HomeScreen(user: user, token: token)),
         );
       }
     } else {

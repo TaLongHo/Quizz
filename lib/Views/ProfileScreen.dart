@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../Models/User.dart';
 import '../Controller/ProfileController.dart';
+import '../Service/ThemeService.dart'; // Đảm bảo đã có file này
 
 class ProfileScreen extends StatefulWidget {
   final User user;
@@ -32,7 +33,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(primary: Colors.blue[900]!),
+            colorScheme: ColorScheme.light(
+              primary: Colors.blue[900]!,
+              onPrimary: Colors.white,
+              onSurface: ThemeService.isDark ? Colors.white : Colors.black,
+            ),
+            dialogBackgroundColor: Theme.of(context).scaffoldBackgroundColor,
           ),
           child: child!,
         );
@@ -41,13 +47,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     if (picked != null) {
       setModalState(() {
-        // Định dạng lại thành YYYY-MM-DD để lưu vào Database
         controller.text = DateFormat('yyyy-MM-dd').format(picked);
       });
     }
   }
 
-  // HÀM HIỂN THỊ FORM CHỈNH SỬA
   void _showEditProfileDialog() {
     final nameController = TextEditingController(text: currentUser.displayName);
     final birthdayController = TextEditingController(text: currentUser.birthday);
@@ -56,6 +60,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: Theme.of(context).cardColor,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(25))),
       builder: (context) => StatefulBuilder(
         builder: (context, setModalState) => Padding(
@@ -66,12 +71,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text("Chỉnh sửa hồ sơ", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              Text("Chỉnh sửa hồ sơ",
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: ThemeService.isDark ? Colors.white : Colors.black87)),
               const SizedBox(height: 20),
 
-              // 1. Nhập Tên
               TextField(
                 controller: nameController,
+                style: TextStyle(color: ThemeService.isDark ? Colors.white : Colors.black),
                 decoration: const InputDecoration(
                   labelText: "Tên hiển thị",
                   border: OutlineInputBorder(),
@@ -80,11 +86,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               const SizedBox(height: 15),
 
-              // 2. Chọn Ngày sinh
               TextField(
                 controller: birthdayController,
-                readOnly: true, // Không cho nhập tay, chỉ cho chọn từ lịch
+                readOnly: true,
                 onTap: () => _selectDate(context, birthdayController, setModalState),
+                style: TextStyle(color: ThemeService.isDark ? Colors.white : Colors.black),
                 decoration: const InputDecoration(
                   labelText: "Ngày sinh",
                   border: OutlineInputBorder(),
@@ -94,8 +100,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               const SizedBox(height: 20),
 
-              // 3. Chọn Giới tính
-              const Align(alignment: Alignment.centerLeft, child: Text("Giới tính:", style: TextStyle(fontWeight: FontWeight.bold))),
+              Align(alignment: Alignment.centerLeft,
+                  child: Text("Giới tính:", style: TextStyle(fontWeight: FontWeight.bold, color: ThemeService.isDark ? Colors.white70 : Colors.black87))),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
@@ -106,7 +112,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               const SizedBox(height: 25),
 
-              // NÚT LƯU
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -117,7 +122,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       password: currentUser.password,
                       displayName: nameController.text,
                       gender: selectedGender,
-                      birthday: birthdayController.text, // Cập nhật ngày sinh mới
+                      birthday: birthdayController.text,
                       role: currentUser.role,
                       streakCount: currentUser.streakCount,
                       remindTime: currentUser.remindTime,
@@ -148,17 +153,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = ThemeService.isDark;
+    final List<Color> brandGradient = isDark
+        ? [const Color(0xFF1A237E), const Color(0xFF4A148C)] // Tông tối sang trọng
+        : [const Color(0xFF0D47A1), const Color(0xFF6A1B9A)]; // Tông sáng rực rỡ
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text("Hồ sơ cá nhân", style: TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
-        backgroundColor: Colors.blue[900],
+        backgroundColor: isDark ? theme.cardColor : Colors.blue[900],
         elevation: 0,
         foregroundColor: Colors.white,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context, currentUser), // QUAN TRỌNG: Trả dữ liệu mới về Home
+          onPressed: () => Navigator.pop(context, currentUser),
         ),
         actions: [
           IconButton(onPressed: _showEditProfileDialog, icon: const Icon(Icons.edit_square))
@@ -167,30 +178,53 @@ class _ProfileScreenState extends State<ProfileScreen> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            _buildHeader(),
+            _buildHeader(isDark),
             Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
                 children: [
+                  // CARD: CÀI ĐẶT GIAO DIỆN
+                  _buildInfoCard(
+                    title: "Cài đặt ứng dụng",
+                    items: [
+                      ListTile(
+                        leading: _buildIconBox(Icons.dark_mode, Colors.purple),
+                        title: Text("Chế độ tối", style: TextStyle(fontSize: 14, color: isDark ? Colors.white70 : Colors.grey[700])),
+                        trailing: Switch(
+                          value: isDark,
+                          activeColor: Colors.purpleAccent,
+                          onChanged: (value) async {
+                            await ThemeService.toggleTheme();
+                            setState(() {});
+                          },
+                        ),
+                      ),
+                      _buildInfoItem(Icons.notifications_active, "Nhắc nhở học", currentUser.remindTime, color: Colors.green),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  // CARD: THÔNG TIN CƠ BẢN
                   _buildInfoCard(
                     title: "Thông tin cơ bản",
                     items: [
                       _buildInfoItem(Icons.cake, "Ngày sinh", currentUser.birthday),
                       _buildInfoItem(Icons.wc, "Giới tính", _controller.getGenderText(currentUser.gender)),
-                      _buildInfoItem(Icons.badge, "Chức vụ", currentUser.role.toUpperCase()),
+                      _buildInfoItem(Icons.badge, "Chức vụ", currentUser.role.toUpperCase(), color: Colors.amber),
                     ],
                   ),
                   const SizedBox(height: 20),
+
+                  // CARD: THÀNH TÍCH
                   _buildInfoCard(
                     title: "Học tập",
                     items: [
                       _buildInfoItem(Icons.local_fire_department, "Streak hiện tại", "${currentUser.streakCount} ngày", color: Colors.orange),
-                      _buildInfoItem(Icons.notifications_active, "Nhắc nhở học", currentUser.remindTime),
                     ],
                   ),
                   const SizedBox(height: 30),
-                  // Nút Đăng xuất
                   _buildLogoutButton(context),
+                  const SizedBox(height: 20),
                 ],
               ),
             ),
@@ -200,14 +234,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // --- Các Widget con giữ nguyên logic nhưng dùng biến currentUser ---
-
-  Widget _buildHeader() {
+  Widget _buildHeader(bool isDark) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.only(bottom: 40),
+      padding: const EdgeInsets.only(bottom: 40, top: 10),
       decoration: BoxDecoration(
-        color: Colors.blue[900],
+        color: isDark ? Theme.of(context).cardColor : Colors.blue[900],
         borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(40), bottomRight: Radius.circular(40)),
       ),
       child: Column(
@@ -223,20 +255,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildInfoCard({required String title, required List<Widget> items}) {
+    final isDark = ThemeService.isDark;
     return Container(
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))]),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          if (!isDark) BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))
+        ],
+      ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Padding(padding: const EdgeInsets.only(left: 20, top: 15, bottom: 5), child: Text(title, style: TextStyle(color: Colors.blue[900], fontWeight: FontWeight.bold, fontSize: 14))),
+        Padding(
+            padding: const EdgeInsets.only(left: 20, top: 15, bottom: 5),
+            child: Text(title, style: TextStyle(color: isDark ? Colors.blue[300] : Colors.blue[900], fontWeight: FontWeight.bold, fontSize: 13))
+        ),
         ...items,
       ]),
     );
   }
 
   Widget _buildInfoItem(IconData icon, String label, String value, {Color color = Colors.blue}) {
+    final isDark = ThemeService.isDark;
     return ListTile(
-      leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(10)), child: Icon(icon, color: color, size: 20)),
-      title: Text(label, style: const TextStyle(fontSize: 13, color: Colors.grey)),
-      trailing: Text(value, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.black87)),
+      leading: _buildIconBox(icon, color),
+      title: Text(label, style: TextStyle(fontSize: 13, color: isDark ? Colors.white70 : Colors.grey)),
+      trailing: Text(value, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)),
+    );
+  }
+
+  Widget _buildIconBox(IconData icon, Color color) {
+    return Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+        child: Icon(icon, color: color, size: 20)
     );
   }
 
@@ -247,7 +298,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
         onPressed: () => _controller.logout(context),
         icon: const Icon(Icons.logout),
         label: const Text("ĐĂNG XUẤT", style: TextStyle(fontWeight: FontWeight.bold)),
-        style: ElevatedButton.styleFrom(backgroundColor: Colors.red[50], foregroundColor: Colors.red[700], padding: const EdgeInsets.symmetric(vertical: 15), elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15), side: BorderSide(color: Colors.red[100]!))),
+        style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.red.withOpacity(0.1),
+            foregroundColor: Colors.redAccent,
+            padding: const EdgeInsets.symmetric(vertical: 15),
+            elevation: 0,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))
+        ),
       ),
     );
   }
@@ -256,8 +313,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Radio<int>(value: value, groupValue: groupValue, onChanged: onChanged),
-        Text(label),
+        Radio<int>(
+          value: value,
+          groupValue: groupValue,
+          onChanged: onChanged,
+          activeColor: Colors.blue[900],
+        ),
+        Text(label, style: TextStyle(color: ThemeService.isDark ? Colors.white70 : Colors.black87)),
       ],
     );
   }

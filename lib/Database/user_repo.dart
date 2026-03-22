@@ -42,4 +42,17 @@ class UserRepo {
       return false;
     }
   }
+
+  Future<User?> getUserById(int id) async {
+    final db = await dbCore.database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'users',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+    if (maps.isNotEmpty) {
+      return User.fromMap(maps.first);
+    }
+    return null;
+  }
 }

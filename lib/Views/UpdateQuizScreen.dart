@@ -1,193 +1,143 @@
 import 'package:flutter/material.dart';
-import 'package:quizz/Database/lesson_repo.dart';
-import 'package:quizz/Models/Lesson.dart';
-import 'package:quizz/Models/Question.dart';
+import '../Models/Lesson.dart';
+import '../Models/Question.dart';
+import '../Database/lesson_repo.dart';
+import '../Service/ThemeService.dart';
 
 class UpdateQuizScreen extends StatefulWidget {
   final Lesson lesson;
+  final Question? question;
 
-  const UpdateQuizScreen({super.key, required this.lesson});
+  const UpdateQuizScreen({super.key, required this.lesson, this.question});
 
   @override
   State<UpdateQuizScreen> createState() => _UpdateQuizScreenState();
 }
 
 class _UpdateQuizScreenState extends State<UpdateQuizScreen> {
-  final LessonRepo _repo = LessonRepo();
-
-  final _titleController = TextEditingController();
-  final _contentController = TextEditingController();
-
-  final _o1Controller = TextEditingController();
-  final _o2Controller = TextEditingController();
-  final _o3Controller = TextEditingController();
-  final _o4Controller = TextEditingController();
-
-  String _selectedAnswer = "";
-  Question? _question;
+  final _repo = LessonRepo();
+  late TextEditingController _qController;
+  late TextEditingController _a1Controller;
+  late TextEditingController _a2Controller;
+  late TextEditingController _a3Controller;
+  late TextEditingController _a4Controller;
 
   @override
   void initState() {
     super.initState();
-    _titleController.text = widget.lesson.title;
-    _loadData();
+    _qController = TextEditingController(text: widget.question?.content ?? "");
+
+    // Tách chuỗi options "A|B|C|D"
+    List<String> opts = widget.question?.options?.split('|') ?? ["", "", "", ""];
+    _a1Controller = TextEditingController(text: opts.length > 0 ? opts[0] : "");
+    _a2Controller = TextEditingController(text: opts.length > 1 ? opts[1] : "");
+    _a3Controller = TextEditingController(text: opts.length > 2 ? opts[2] : "");
+    _a4Controller = TextEditingController(text: opts.length > 3 ? opts[3] : "");
   }
 
-  Future<void> _loadData() async {
-    final questions =
-    await _repo.getQuestionsByLesson(widget.lesson.id!);
-
-    if (questions.isNotEmpty) {
-      final q = questions.first;
-      List<String> opts = (q.options ?? "").split('|');
-
-      setState(() {
-        _question = q;
-        _contentController.text = q.content;
-
-        _o1Controller.text = opts.length > 0 ? opts[0] : "";
-        _o2Controller.text = opts.length > 1 ? opts[1] : "";
-        _o3Controller.text = opts.length > 2 ? opts[2] : "";
-        _o4Controller.text = opts.length > 3 ? opts[3] : "";
-
-        _selectedAnswer = q.answer; // set đáp án đúng ban đầu
-      });
-    }
-  }
-
-  // ─── SAVE ─────────────────────────
-  Future<void> _save() async {
-    List<String> options = [
-      _o1Controller.text.trim(),
-      _o2Controller.text.trim(),
-      _o3Controller.text.trim(),
-      _o4Controller.text.trim(),
-    ];
-
-    // validate
-    if (_selectedAnswer.isEmpty || !options.contains(_selectedAnswer)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Vui lòng chọn đáp án đúng hợp lệ"),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    final db = await _repo.dbCore.database;
-
-    await db.transaction((txn) async {
-      await txn.update(
-        'lessons',
-        {'title': _titleController.text},
-        where: 'id = ?',
-        whereArgs: [widget.lesson.id],
-      );
-
-      if (_question != null) {
-        await txn.update(
-          'questions',
-          {
-            'content': _contentController.text,
-            'answer': _selectedAnswer,
-            'options': options.join("|"),
-          },
-          where: 'id = ?',
-          whereArgs: [_question!.id],
-        );
-      }
-    });
-
-    if (mounted) Navigator.pop(context, true);
-  }
-
-  // ─── OPTION UI ─────────────────────────
-  Widget _buildOption(String label, TextEditingController controller) {
-    return Row(
-      children: [
-        Radio<String>(
-          value: controller.text,
-          groupValue: _selectedAnswer,
-          onChanged: (value) {
-            setState(() {
-              _selectedAnswer = value!;
-            });
-          },
-        ),
-        Expanded(
-          child: TextField(
-            controller: controller,
-            decoration: InputDecoration(labelText: label),
-            onChanged: (val) {
-              setState(() {
-                // nếu option bị sửa và đang là đáp án → update lại
-                if (_selectedAnswer == controller.text) {
-                  _selectedAnswer = val;
-                }
-              });
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ─── UI ─────────────────────────
   @override
   Widget build(BuildContext context) {
+    final isDark = ThemeService.isDark;
+    final brandGradient = isDark
+        ? [const Color(0xFF1A237E), const Color(0xFF4A148C)]
+        : [const Color(0xFF0D47A1), const Color(0xFF6A1B9A)];
+
     return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text("Chỉnh sửa câu hỏi"),
-        backgroundColor: Colors.blue[900],
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.save),
-            onPressed: _save,
-          )
-        ],
+        title: const Text("Chỉnh sửa câu hỏi", style: TextStyle(fontWeight: FontWeight.bold)),
+        centerTitle: true,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(gradient: LinearGradient(colors: brandGradient)),
+        ),
       ),
-      body: _question == null
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            // TITLE
-            TextField(
-              controller: _titleController,
-              decoration: const InputDecoration(
-                labelText: "Tên học phần",
-                border: OutlineInputBorder(),
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
-            // QUESTION
-            TextField(
-              controller: _contentController,
-              decoration: const InputDecoration(
-                  labelText: "Nội dung câu hỏi"),
-            ),
-
-            const SizedBox(height: 20),
-
-            const Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                "Chọn đáp án đúng:",
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
-
-            _buildOption("Option 1", _o1Controller),
-            _buildOption("Option 2", _o2Controller),
-            _buildOption("Option 3", _o3Controller),
-            _buildOption("Option 4", _o4Controller),
+            _buildEditCard(isDark),
+            const SizedBox(height: 30),
+            _buildSubmitButton(),
           ],
         ),
       ),
     );
+  }
+
+  Widget _buildEditCard(bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey[200]!,
+        ),
+      ),
+      child: Column(
+        children: [
+          _buildInputField(_qController, "Nội dung câu hỏi", Icons.help_outline, isDark, maxLines: 2),
+          const SizedBox(height: 25),
+          _buildInputField(_a1Controller, "Đáp án ĐÚNG", Icons.check_circle, isDark, accentColor: Colors.green),
+          const SizedBox(height: 15),
+          _buildInputField(_a2Controller, "Đáp án sai 1", Icons.close, isDark, accentColor: Colors.redAccent),
+          const SizedBox(height: 15),
+          _buildInputField(_a3Controller, "Đáp án sai 2", Icons.close, isDark, accentColor: Colors.redAccent),
+          const SizedBox(height: 15),
+          _buildInputField(_a4Controller, "Đáp án sai 3", Icons.close, isDark, accentColor: Colors.redAccent),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInputField(TextEditingController controller, String label, IconData icon, bool isDark, {Color? accentColor, int maxLines = 1}) {
+    return TextField(
+      controller: controller,
+      maxLines: maxLines,
+      style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon, color: accentColor ?? (isDark ? Colors.blue[200] : Colors.blue[900])),
+        filled: true,
+        fillColor: isDark ? Colors.white.withOpacity(0.03) : Colors.grey[50],
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
+          borderSide: BorderSide(color: accentColor ?? Colors.blue, width: 2),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSubmitButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 55,
+      child: ElevatedButton(
+        onPressed: _saveUpdate,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.blue[800],
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        ),
+        child: const Text("CẬP NHẬT", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+      ),
+    );
+  }
+
+  void _saveUpdate() async {
+    if (_qController.text.isEmpty || _a1Controller.text.isEmpty) return;
+
+    String optionsArr = "${_a1Controller.text}|${_a2Controller.text}|${_a3Controller.text}|${_a4Controller.text}";
+
+    Question updatedQ = Question(
+      id: widget.question?.id,
+      lessonId: widget.lesson.id!, // FIX LỖI Ở ĐÂY
+      content: _qController.text,
+      answer: _a1Controller.text,
+      options: optionsArr,
+    );
+
+    await _repo.updateQuestion(updatedQ);
+    if (mounted) Navigator.pop(context, true);
   }
 }

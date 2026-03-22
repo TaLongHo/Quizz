@@ -22,7 +22,7 @@ class AddLessonController {
     ));
   }
 
-  Future<bool> saveToDatabase(String title, int userId, {String type = 'abc'}) async {
+  Future<bool> saveToDatabase(String title, int userId, {String type = 'quiz'}) async {
     if (title.isEmpty || tempQuestions.isEmpty) return false;
 
     try {
