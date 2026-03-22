@@ -83,27 +83,66 @@ class DbCore {
   }
 
   Future _seedData(Database db) async {
-    // Tài khoản Admin mẫu
-    await db.insert('users', {
+    // 1. Users
+    int adminId = await db.insert('users', {
       'username': 'admin',
       'password': '123',
       'display_name': 'Quản Trị Viên',
       'role': 'admin',
       'gender': 0,
       'birthday': '1995-01-01',
-      'streak_count': 0
     });
 
-    // Tài khoản User mẫu
-    await db.insert('users', {
+    int userId = await db.insert('users', {
       'username': 'user1',
       'password': '123',
       'display_name': 'Nguyễn Văn User',
       'role': 'user',
       'gender': 1,
       'birthday': '2004-05-20',
-      'streak_count': 2,
-      'last_study_date': '2026-03-10'
+    });
+
+    // 2. Lessons (⚠️ sửa type)
+    int lesson1Id = await db.insert('lessons', {
+      'user_id': userId,
+      'title': 'Bài 1: Trắc nghiệm cơ bản',
+      'type': 'quiz', // ✅
+    });
+
+    int lesson2Id = await db.insert('lessons', {
+      'user_id': userId,
+      'title': 'Bài 2: Điền từ cơ bản',
+      'type': 'fill', // ✅
+    });
+
+    // 3. Questions - Lesson 1
+    await db.insert('questions', {
+      'lesson_id': lesson1Id, // ✅ đúng
+      'content': 'Apple nghĩa là gì?',
+      'answer': 'Táo',
+      'options': 'Táo|Cam|Chuối|Nho'
+    });
+
+    await db.insert('questions', {
+      'lesson_id': lesson1Id,
+      'content': 'Dog nghĩa là gì?',
+      'answer': 'Chó',
+      'options': 'Mèo|Chó|Cá|Chim'
+    });
+
+    // 4. Questions - Lesson 2
+    await db.insert('questions', {
+      'lesson_id': lesson2Id, // ✅ đúng
+      'content': 'Chọn dạng đúng của "to be" với I',
+      'answer': 'am',
+      'options': 'is|am|are'
+    });
+
+    await db.insert('questions', {
+      'lesson_id': lesson2Id,
+      'content': 'He ___ a student.',
+      'answer': 'is',
+      'options': 'am|is|are'
     });
   }
 }

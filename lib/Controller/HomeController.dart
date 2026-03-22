@@ -75,7 +75,7 @@ class HomeController {
     List<Lesson> allLessons = await _lessonRepo.getAllLessons(userId);
 
     // Phân loại
-    List<Lesson> quizLessons = allLessons.where((l) => l.type == 'abc').toList();
+    List<Lesson> quizLessons = allLessons.where((l) => l.type == 'quiz').toList();
     List<Lesson> fillLessons = allLessons.where((l) => l.type == 'fill').toList();
 
     return {

@@ -8,7 +8,7 @@ class Quizcontroller {
     List<Lesson> allLessons = await _lessonRepo.getAllLessonsAdmin();
     // Phân loại
     List<Lesson> quizLessons =
-    allLessons.where((l) => l.type == 'abc').toList();
+    allLessons.where((l) => l.type == 'quiz').toList();
 
     List<Lesson> fillLessons =
     allLessons.where((l) => l.type == 'fill').toList();

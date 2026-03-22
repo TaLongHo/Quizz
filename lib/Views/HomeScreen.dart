@@ -272,14 +272,14 @@ class _HomeScreenState extends State<HomeScreen> {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
             child: ListTile(
               leading: CircleAvatar(
-                backgroundColor: lesson.type == 'abc' ? Colors.blue[50] : Colors.green[50],
+                backgroundColor: lesson.type == 'quiz' ? Colors.blue[50] : Colors.green[50],
                 child: Icon(
-                  lesson.type == 'abc' ? Icons.quiz_outlined : Icons.text_fields_outlined,
-                  color: lesson.type == 'abc' ? Colors.blue[800] : Colors.green[800],
+                  lesson.type == 'quiz' ? Icons.quiz_outlined : Icons.text_fields_outlined,
+                  color: lesson.type == 'quiz' ? Colors.blue[800] : Colors.green[800],
                 ),
               ),
               title: Text(lesson.title, style: const TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: Text("Loại: ${lesson.type == 'abc' ? 'Trắc nghiệm' : 'Điền từ'}"),
+              subtitle: Text("Loại: ${lesson.type == 'quiz' ? 'Trắc nghiệm' : 'Điền từ'}"),
               trailing: const Icon(Icons.arrow_right, color: Colors.grey),
               onTap: () {
                 if (lesson.type == 'fill') {
