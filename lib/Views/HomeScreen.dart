@@ -21,6 +21,9 @@ class _HomeScreenState extends State<HomeScreen> {
   late User currentUser;
   Key _refreshKey = UniqueKey();
 
+  // Biến quản lý tìm kiếm
+  String _searchQuery = "";
+
   final PageController _quizPageController = PageController();
   final PageController _fillPageController = PageController();
 
@@ -62,7 +65,6 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  // Hàm điều hướng dùng chung cho cả Card và Menu Edit
   void _navigateToDetail(Lesson lesson) {
     Navigator.push(
       context,
@@ -71,7 +73,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ? FillLessonDetailScreen(lesson: lesson)
             : LessonDetailScreen(lesson: lesson),
       ),
-    ).then((_) => _refreshData()); // Refresh dữ liệu khi quay lại nếu có thay đổi
+    ).then((_) => _refreshData());
   }
 
   List<List<Lesson>> _chunkLessons(List<Lesson> lessons, int size) {
@@ -136,15 +138,32 @@ class _HomeScreenState extends State<HomeScreen> {
           // 2. Nội dung chính
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text("Hành động nhanh", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 15),
                   _buildQuickAction(theme, isDark),
-                  const SizedBox(height: 30),
-                  Text("Học phần của bạn", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)),
+                  const SizedBox(height: 25),
+
+                  // Phần Tiêu đề Học phần và Thanh Search
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text("Học phần của bạn", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)),
+                      if (_searchQuery.isNotEmpty)
+                        IconButton(
+                          icon: const Icon(Icons.close, size: 20, color: Colors.grey),
+                          onPressed: () => setState(() => _searchQuery = ""),
+                        )
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+
+                  // Widget Search Bar
+                  _buildSearchBar(isDark),
+
                   const SizedBox(height: 10),
 
                   Expanded(
@@ -164,12 +183,21 @@ class _HomeScreenState extends State<HomeScreen> {
                               future: _controller.getCategorizedLessons(widget.user.id!),
                               builder: (context, snapshot) {
                                 if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-                                final quizList = snapshot.data?['quiz'] ?? [];
-                                final fillList = snapshot.data?['fill'] ?? [];
+
+                                // Lấy dữ liệu thô
+                                final rawQuizList = snapshot.data?['quiz'] ?? [];
+                                final rawFillList = snapshot.data?['fill'] ?? [];
+
+                                // Áp dụng Filter tìm kiếm
+                                final quizList = rawQuizList.where((l) =>
+                                    l.title.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
+                                final fillList = rawFillList.where((l) =>
+                                    l.title.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
+
                                 return TabBarView(
                                   children: [
-                                    _buildLessonPageList(quizList, "Chưa có bộ trắc nghiệm nào", _quizPageController),
-                                    _buildLessonPageList(fillList, "Chưa có bộ điền từ nào", _fillPageController),
+                                    _buildLessonPageList(quizList, _searchQuery.isEmpty ? "Chưa có bộ trắc nghiệm nào" : "Không tìm thấy kết quả", _quizPageController),
+                                    _buildLessonPageList(fillList, _searchQuery.isEmpty ? "Chưa có bộ điền từ nào" : "Không tìm thấy kết quả", _fillPageController),
                                   ],
                                 );
                               },
@@ -184,6 +212,29 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // Widget Thanh tìm kiếm
+  Widget _buildSearchBar(bool isDark) {
+    return Container(
+      height: 45,
+      decoration: BoxDecoration(
+        color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey[100],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: isDark ? Colors.white10 : Colors.transparent),
+      ),
+      child: TextField(
+        onChanged: (value) => setState(() => _searchQuery = value),
+        style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 14),
+        decoration: InputDecoration(
+          hintText: "Tìm tên học phần...",
+          hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
+          prefixIcon: const Icon(Icons.search, color: Colors.grey, size: 20),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(vertical: 10),
+        ),
       ),
     );
   }
