@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../Models/User.dart';
-import 'LoginScreen.dart'; // Đảm bảo import để quay về trang Login
+import 'AddLessonAdminScreen.dart';
+import 'LoginScreen.dart';
+import 'ManageQuizScreen.dart'; // Đảm bảo import để quay về trang Login
 
 class AdminHomeScreen extends StatelessWidget {
   final User user;
