@@ -21,11 +21,21 @@ class _HomeScreenState extends State<HomeScreen> {
   late User currentUser;
   Key _refreshKey = UniqueKey();
 
+  final PageController _quizPageController = PageController();
+  final PageController _fillPageController = PageController();
+
   @override
   void initState() {
     super.initState();
     currentUser = widget.user;
     _initTestData();
+  }
+
+  @override
+  void dispose() {
+    _quizPageController.dispose();
+    _fillPageController.dispose();
+    super.dispose();
   }
 
   Future<void> _initTestData() async {
@@ -50,6 +60,26 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _refreshKey = UniqueKey();
     });
+  }
+
+  // Hàm điều hướng dùng chung cho cả Card và Menu Edit
+  void _navigateToDetail(Lesson lesson) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => lesson.type == 'fill'
+            ? FillLessonDetailScreen(lesson: lesson)
+            : LessonDetailScreen(lesson: lesson),
+      ),
+    ).then((_) => _refreshData()); // Refresh dữ liệu khi quay lại nếu có thay đổi
+  }
+
+  List<List<Lesson>> _chunkLessons(List<Lesson> lessons, int size) {
+    List<List<Lesson>> chunks = [];
+    for (var i = 0; i < lessons.length; i += size) {
+      chunks.add(lessons.sublist(i, i + size > lessons.length ? lessons.length : i + size));
+    }
+    return chunks;
   }
 
   @override
@@ -84,71 +114,21 @@ class _HomeScreenState extends State<HomeScreen> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(_controller.getGreeting(),
-                            style: const TextStyle(color: Colors.white70, fontSize: 16)),
-                        Text(currentUser.displayName,
-                            style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+                        Text(_controller.getGreeting(), style: const TextStyle(color: Colors.white70, fontSize: 16)),
+                        Text(currentUser.displayName, style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
                       ],
                     ),
                     GestureDetector(
                       onTap: () async {
                         User? newUser = await _controller.navigateToProfile(context, currentUser);
-                        if (newUser != null) {
-                          setState(() {
-                            currentUser = newUser;
-                          });
-                        }
+                        if (newUser != null) setState(() => currentUser = newUser);
                       },
-                      child: const CircleAvatar(
-                        radius: 25,
-                        backgroundColor: Colors.white24,
-                        child: Icon(Icons.person, color: Colors.white),
-                      ),
+                      child: const CircleAvatar(radius: 25, backgroundColor: Colors.white24, child: Icon(Icons.person, color: Colors.white)),
                     ),
                   ],
                 ),
                 const SizedBox(height: 25),
-                GestureDetector(
-                  onTap: () => _controller.showStreakCalendar(
-                      context,
-                      currentUser,
-                          (updatedUser) {
-                        setState(() {
-                          currentUser = updatedUser;
-                        });
-                      }
-                  ),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.white.withOpacity(0.2)),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.local_fire_department, color: Colors.orangeAccent, size: 30),
-                        const SizedBox(width: 10),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "${currentUser.streakCount} Ngày liên tiếp",
-                              style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600),
-                            ),
-                            const Text(
-                              "Chạm để xem lịch sử học",
-                              style: TextStyle(color: Colors.white70, fontSize: 12),
-                            ),
-                          ],
-                        ),
-                        const Spacer(),
-                        const Icon(Icons.calendar_month, color: Colors.white70, size: 20),
-                      ],
-                    ),
-                  ),
-                ),
+                _buildStreakCard(),
               ],
             ),
           ),
@@ -160,60 +140,11 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text("Hành động nhanh",
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white : Colors.black87)),
+                  Text("Hành động nhanh", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)),
                   const SizedBox(height: 20),
-
-                  GestureDetector(
-                    onTap: () async {
-                      await _controller.navigateToAddLesson(context, currentUser, _refreshData);
-                      _refreshData();
-                    },
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: theme.cardColor,
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          if(!isDark) BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 5))
-                        ],
-                        border: isDark ? Border.all(color: Colors.white.withOpacity(0.05)) : null,
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                                color: isDark ? Colors.blue.withOpacity(0.1) : Colors.blue[50],
-                                borderRadius: BorderRadius.circular(15)
-                            ),
-                            child: Icon(Icons.add_box_rounded, color: isDark ? Colors.blue[300] : Colors.blue[800], size: 30),
-                          ),
-                          const SizedBox(width: 20),
-                          // --- ĐÃ XÓA TỪ KHÓA CONST Ở ĐÂY ĐỂ FIX LỖI ---
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text("Thêm học phần mới",
-                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold,
-                                      color: isDark ? Colors.white : Colors.black87)),
-                              Text("Tạo chủ đề học tập của riêng bạn",
-                                  style: TextStyle(color: isDark ? Colors.white60 : Colors.grey)),
-                            ],
-                          ),
-                          const Spacer(),
-                          Icon(Icons.arrow_forward_ios, size: 16, color: isDark ? Colors.white30 : Colors.grey),
-                        ],
-                      ),
-                    ),
-                  ),
-
+                  _buildQuickAction(theme, isDark),
                   const SizedBox(height: 30),
-                  Text("Học phần của bạn",
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white : Colors.black87)),
+                  Text("Học phần của bạn", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)),
                   const SizedBox(height: 10),
 
                   Expanded(
@@ -225,26 +156,20 @@ class _HomeScreenState extends State<HomeScreen> {
                             labelColor: isDark ? Colors.blue[300] : Colors.blue[900],
                             unselectedLabelColor: Colors.grey,
                             indicatorColor: isDark ? Colors.blue[300] : Colors.blue[900],
-                            tabs: const [
-                              Tab(text: "Trắc nghiệm"),
-                              Tab(text: "Điền từ"),
-                            ],
+                            tabs: const [Tab(text: "Trắc nghiệm"), Tab(text: "Điền từ")],
                           ),
                           Expanded(
                             child: FutureBuilder<Map<String, List<Lesson>>>(
                               key: _refreshKey,
                               future: _controller.getCategorizedLessons(widget.user.id!),
                               builder: (context, snapshot) {
-                                if (snapshot.connectionState == ConnectionState.waiting) {
-                                  return const Center(child: CircularProgressIndicator());
-                                }
+                                if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
                                 final quizList = snapshot.data?['quiz'] ?? [];
                                 final fillList = snapshot.data?['fill'] ?? [];
-
                                 return TabBarView(
                                   children: [
-                                    _buildLessonList(quizList, "Chưa có bộ trắc nghiệm nào"),
-                                    _buildLessonList(fillList, "Chưa có bộ điền từ nào"),
+                                    _buildLessonPageList(quizList, "Chưa có bộ trắc nghiệm nào", _quizPageController),
+                                    _buildLessonPageList(fillList, "Chưa có bộ điền từ nào", _fillPageController),
                                   ],
                                 );
                               },
@@ -263,102 +188,170 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // --- HÀM BUILD LESSON LIST ĐÃ ĐƯỢC TỐI ƯU DARK MODE ---
-  Widget _buildLessonList(List<Lesson> lessons, String emptyMessage) {
+  Widget _buildLessonPageList(List<Lesson> allLessons, String emptyMessage, PageController pageController) {
     bool isDark = ThemeService.isDark;
+    if (allLessons.isEmpty) return Center(child: Text(emptyMessage, style: const TextStyle(color: Colors.grey)));
 
-    if (lessons.isEmpty) {
-      return Center(child: Text(emptyMessage, style: const TextStyle(color: Colors.grey)));
-    }
+    List<List<Lesson>> pages = _chunkLessons(allLessons, 3);
 
-    return ListView.builder(
-      padding: const EdgeInsets.only(top: 10),
-      itemCount: lessons.length,
-      itemBuilder: (context, index) {
-        final lesson = lessons[index];
-
-        return Dismissible(
-          key: Key(lesson.id.toString()),
-          direction: DismissDirection.endToStart,
-          confirmDismiss: (direction) async {
-            return await showDialog(
-              context: context,
-              builder: (context) => AlertDialog(
-                backgroundColor: Theme.of(context).cardColor, // Đổi màu nền dialog
-                title: Text("Xác nhận xóa", style: TextStyle(color: isDark ? Colors.white : Colors.black)),
-                content: Text("Bạn có chắc chắn muốn xóa bộ '${lesson.title}' không?", style: TextStyle(color: isDark ? Colors.white70 : Colors.black87)),
-                actions: [
-                  TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("HỦY")),
-                  TextButton(
-                      onPressed: () => Navigator.pop(context, true),
-                      child: const Text("XÓA", style: TextStyle(color: Colors.red))
-                  ),
-                ],
-              ),
-            );
-          },
-          onDismissed: (direction) async {
-            bool success = await _controller.deleteLesson(lesson.id!);
-            if (success) {
-              _refreshData();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Đã xóa học phần")),
+    return Column(
+      children: [
+        Expanded(
+          child: PageView.builder(
+            controller: pageController,
+            itemCount: pages.length,
+            itemBuilder: (context, pageIndex) {
+              return ListView.builder(
+                padding: const EdgeInsets.only(top: 10),
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: pages[pageIndex].length,
+                itemBuilder: (context, index) => _buildLessonCard(pages[pageIndex][index], isDark),
               );
-            }
-          },
-          background: Container(
-            alignment: Alignment.centerRight,
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            margin: const EdgeInsets.only(bottom: 10),
-            decoration: BoxDecoration(
-              color: Colors.redAccent,
-              borderRadius: BorderRadius.circular(15),
-            ),
-            child: const Icon(Icons.delete, color: Colors.white),
+            },
           ),
-          child: Card(
-            elevation: 0,
-            color: Theme.of(context).cardColor,
-            margin: const EdgeInsets.only(bottom: 10),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(15),
-              // Thêm viền nhẹ khi ở Dark Mode để tách Card ra khỏi nền
-              side: isDark
-                  ? BorderSide(color: Colors.white.withOpacity(0.1), width: 1)
-                  : const BorderSide(color: Colors.transparent), // Thay BorderSide.none
-            ),
-            child: ListTile(
-              leading: CircleAvatar(
-                backgroundColor: isDark
-                    ? (lesson.type == 'quiz' ? Colors.blue.withOpacity(0.1) : Colors.green.withOpacity(0.1))
-                    : (lesson.type == 'quiz' ? Colors.blue[50] : Colors.green[50]),
-                child: Icon(
-                  lesson.type == 'quiz' ? Icons.quiz_outlined : Icons.text_fields_outlined,
-                  color: isDark
-                      ? (lesson.type == 'quiz' ? Colors.blue[300] : Colors.green[300])
-                      : (lesson.type == 'quiz' ? Colors.blue[800] : Colors.green[800]),
-                ),
-              ),
-              title: Text(lesson.title,
-                  style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)),
-              subtitle: Text("Loại: ${lesson.type == 'quiz' ? 'Trắc nghiệm' : 'Điền từ'}",
-                  style: TextStyle(color: isDark ? Colors.white60 : Colors.black54)),
-              trailing: Icon(Icons.arrow_right, color: isDark ? Colors.white30 : Colors.grey),
-              onTap: () {
-                if (lesson.type == 'fill') {
-                  Navigator.push(context, MaterialPageRoute(
-                    builder: (context) => FillLessonDetailScreen(lesson: lesson),
-                  ));
-                } else {
-                  Navigator.push(context, MaterialPageRoute(
-                    builder: (context) => LessonDetailScreen(lesson: lesson),
-                  ));
-                }
-              },
-            ),
+        ),
+        if (pages.length > 1) _buildPageIndicator(pages.length, pageController, isDark),
+      ],
+    );
+  }
+
+  Widget _buildLessonCard(Lesson lesson, bool isDark) {
+    return Card(
+      elevation: 0,
+      color: Theme.of(context).cardColor,
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(15),
+        side: BorderSide(color: isDark ? Colors.white.withOpacity(0.1) : Colors.grey[200]!),
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
+        leading: CircleAvatar(
+          backgroundColor: lesson.type == 'quiz' ? Colors.blue.withOpacity(0.1) : Colors.green.withOpacity(0.1),
+          child: Icon(
+            lesson.type == 'quiz' ? Icons.quiz_outlined : Icons.text_fields_outlined,
+            color: lesson.type == 'quiz' ? Colors.blue : Colors.green,
           ),
-        );
-      },
+        ),
+        title: Text(lesson.title, style: const TextStyle(fontWeight: FontWeight.bold)),
+        subtitle: Text(lesson.type == 'quiz' ? "Trắc nghiệm" : "Điền từ", style: const TextStyle(fontSize: 12)),
+        trailing: IconButton(
+          icon: const Icon(Icons.more_vert, size: 20),
+          onPressed: () => _showLessonOptions(lesson),
+        ),
+        onTap: () => _navigateToDetail(lesson),
+      ),
+    );
+  }
+
+  void _showLessonOptions(Lesson lesson) {
+    bool isDark = ThemeService.isDark;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Theme.of(context).cardColor,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(height: 15),
+          ListTile(
+            leading: const Icon(Icons.edit_note_rounded, color: Colors.blue),
+            title: Text("Chỉnh sửa học phần", style: TextStyle(color: isDark ? Colors.white : Colors.black87)),
+            onTap: () {
+              Navigator.pop(context);
+              _navigateToDetail(lesson);
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.delete_outline_rounded, color: Colors.red),
+            title: const Text("Xóa học phần này", style: TextStyle(color: Colors.red, fontWeight: FontWeight.w500)),
+            onTap: () {
+              Navigator.pop(context);
+              _confirmDelete(lesson);
+            },
+          ),
+          const SizedBox(height: 25),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDelete(Lesson lesson) async {
+    bool? confirm = await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Theme.of(context).cardColor,
+        title: const Text("Xác nhận xóa"),
+        content: Text("Dữ liệu bộ '${lesson.title}' sẽ biến mất vĩnh viễn?"),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("HỦY")),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text("XÓA", style: TextStyle(color: Colors.red))),
+        ],
+      ),
+    );
+    if (confirm == true) {
+      await _controller.deleteLesson(lesson.id!);
+      _refreshData();
+    }
+  }
+
+  Widget _buildPageIndicator(int count, PageController controller, bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: ListenableBuilder(
+        listenable: controller,
+        builder: (context, _) {
+          int page = controller.hasClients ? controller.page?.round() ?? 0 : 0;
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(count, (i) => AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              height: 8, width: i == page ? 22 : 8,
+              decoration: BoxDecoration(color: i == page ? (isDark ? Colors.blue[300] : Colors.blue[900]) : Colors.grey[300], borderRadius: BorderRadius.circular(10)),
+            )),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildQuickAction(ThemeData theme, bool isDark) {
+    return GestureDetector(
+      onTap: () => _controller.navigateToAddLesson(context, currentUser, _refreshData),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(color: theme.cardColor, borderRadius: BorderRadius.circular(20), border: isDark ? Border.all(color: Colors.white10) : null),
+        child: Row(
+          children: [
+            Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: Colors.blue.withOpacity(0.1), borderRadius: BorderRadius.circular(15)), child: const Icon(Icons.add_box_rounded, color: Colors.blue, size: 30)),
+            const SizedBox(width: 20),
+            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text("Thêm học phần mới", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)),
+              Text("Tạo chủ đề học tập của riêng bạn", style: TextStyle(color: isDark ? Colors.white60 : Colors.grey, fontSize: 13)),
+            ]),
+            const Spacer(),
+            const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStreakCard() {
+    return GestureDetector(
+      onTap: () => _controller.showStreakCalendar(context, currentUser, (u) => setState(() => currentUser = u)),
+      child: Container(
+        padding: const EdgeInsets.all(15),
+        decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), borderRadius: BorderRadius.circular(20)),
+        child: Row(children: [
+          const Icon(Icons.local_fire_department, color: Colors.orangeAccent, size: 30),
+          const SizedBox(width: 10),
+          Text("${currentUser.streakCount} Ngày liên tiếp", style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+          const Spacer(),
+          const Icon(Icons.calendar_month, color: Colors.white70),
+        ]),
+      ),
     );
   }
 }

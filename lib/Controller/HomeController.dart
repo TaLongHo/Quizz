@@ -169,11 +169,11 @@ class HomeController {
     return "Chào buổi tối,";
   }
 
-  // Hàm lấy và phân loại học phần
+  // Hàm lấy và phân loại học phần kèm PHÂN TRANG (3 item/trang)
+  // Trả về Map<String, List<Lesson>> như cũ
   Future<Map<String, List<Lesson>>> getCategorizedLessons(int userId) async {
     List<Lesson> allLessons = await _lessonRepo.getAllLessons(userId);
 
-    // Phân loại
     List<Lesson> quizLessons = allLessons.where((l) => l.type == 'quiz').toList();
     List<Lesson> fillLessons = allLessons.where((l) => l.type == 'fill').toList();
 
