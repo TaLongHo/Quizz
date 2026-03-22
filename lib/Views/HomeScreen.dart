@@ -31,7 +31,6 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     currentUser = widget.user;
-    _initTestData();
   }
 
   @override
@@ -39,24 +38,6 @@ class _HomeScreenState extends State<HomeScreen> {
     _quizPageController.dispose();
     _fillPageController.dispose();
     super.dispose();
-  }
-
-  Future<void> _initTestData() async {
-    final StudyLogRepo _logRepo = StudyLogRepo();
-    await _logRepo.insertTestStreak(currentUser.id!);
-    setState(() {
-      currentUser = User(
-        id: currentUser.id,
-        username: currentUser.username,
-        password: currentUser.password,
-        displayName: currentUser.displayName,
-        gender: currentUser.gender,
-        birthday: currentUser.birthday,
-        streakCount: 6,
-        lastStudyDate: '2026-03-23',
-      );
-    });
-    _refreshData();
   }
 
   void _refreshData() {
