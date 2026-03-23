@@ -1,15 +1,51 @@
 import 'package:flutter/material.dart';
+import 'package:quizz/Views/AdminStatsScreen.dart';
+import '../Database/lesson_repo.dart';
+import '../Database/user_repo.dart';
 import '../Models/User.dart';
 import 'AddLessonAdminScreen.dart';
 import 'LoginScreen.dart';
 import 'ManageQuizScreen.dart';
 import 'UserManagementScreen.dart'; // ✅ Import màn hình quản lý user
 
-class AdminHomeScreen extends StatelessWidget {
+class AdminHomeScreen extends StatefulWidget {
   final User user;
   final String token;
 
   const AdminHomeScreen({super.key, required this.user, required this.token});
+
+  @override
+  State<AdminHomeScreen> createState() => _AdminHomeScreenState();
+}
+
+class _AdminHomeScreenState extends State<AdminHomeScreen> {
+  final UserRepo _userRepo = UserRepo();
+  final LessonRepo _lessonRepo = LessonRepo();
+
+  int _totalUsers = 0;
+  int _totalLessons = 0;
+  bool _loadingStats = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStats();
+  }
+
+  Future<void> _loadStats() async {
+    // Lấy tổng users (role = 'user', không tính admin)
+    final users = await _userRepo.getLeaderboard(limit: 9999);
+    // Lấy tất cả lessons
+    final lessons = await _lessonRepo.getAllLessonsAdmin();
+
+    if (mounted) {
+      setState(() {
+        _totalUsers = users.length;
+        _totalLessons = lessons.length;
+        _loadingStats = false;
+      });
+    }
+  }
 
   void _handleLogout(BuildContext context) {
     showDialog(
@@ -64,10 +100,9 @@ class AdminHomeScreen extends StatelessWidget {
           const Padding(
             padding: EdgeInsets.only(right: 15),
             child: CircleAvatar(
-              radius: 16,
-              backgroundColor: Color(0xFFE2E8F0),
-              child: Icon(Icons.person, size: 20, color: Color(0xFF64748B)),
-            ),
+                radius: 16,
+                backgroundColor: Color(0xFFE2E8F0),
+                child: Icon(Icons.person, size: 20, color: Color(0xFF64748B))),
           )
         ],
       ),
@@ -84,15 +119,34 @@ class AdminHomeScreen extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                     color: Color(0xFF1E293B))),
             const SizedBox(height: 15),
-            Row(
+
+            // ── Stat row với data thật ──
+            _loadingStats
+                ? const Center(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 20),
+                  child: CircularProgressIndicator(),
+                ))
+                : Row(
               children: [
                 _buildStatItem(
-                    "Users", "1,234", Icons.people_alt_rounded, Colors.blue),
+                  "Học viên",
+                  '$_totalUsers',
+                  Icons.people_alt_rounded,
+                  Colors.blue,
+                  sub: 'user',
+                ),
                 const SizedBox(width: 15),
-                _buildStatItem("Lessons", "56",
-                    Icons.menu_book_rounded, Colors.orange),
+                _buildStatItem(
+                  "Học phần",
+                  '$_totalLessons',
+                  Icons.menu_book_rounded,
+                  Colors.orange,
+                  sub: 'trắc nghiệm + điền từ',
+                ),
               ],
             ),
+
             const SizedBox(height: 25),
             const Text("Quản lý dữ liệu",
                 style: TextStyle(
@@ -132,8 +186,7 @@ class AdminHomeScreen extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => const ManageQuizScreen(),
-                      ),
+                          builder: (_) => const ManageQuizScreen()),
                     );
                   },
                 ),
@@ -142,7 +195,13 @@ class AdminHomeScreen extends StatelessWidget {
                   title: "Báo cáo",
                   sub: "Thống kê học tập",
                   color: const Color(0xFFF59E0B),
-                  onTap: () {},
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const AdminStatsScreen()),
+                    ).then((_) => _loadStats()); // refresh khi quay lại
+                  },
                 ),
                 _buildAdminMenu(
                   icon: Icons.settings,
@@ -155,14 +214,14 @@ class AdminHomeScreen extends StatelessWidget {
                   icon: Icons.add,
                   title: "Thêm học phần",
                   sub: "Thêm học phần mới",
-                  color: const Color(0xFF10B981),
+                  color: const Color(0xFF64748B),
                   onTap: () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
                           builder: (context) =>
                           const AddLessonAdminScreen()),
-                    );
+                    ).then((_) => _loadStats()); // refresh sau khi thêm
                   },
                 ),
               ],
@@ -197,9 +256,10 @@ class AdminHomeScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text("Xin chào, Quản trị viên",
-                      style: TextStyle(color: Colors.white70, fontSize: 14)),
+                      style:
+                      TextStyle(color: Colors.white70, fontSize: 14)),
                   const SizedBox(height: 8),
-                  Text(user.displayName,
+                  Text(widget.user.displayName,
                       style: const TextStyle(
                           color: Colors.white,
                           fontSize: 24,
@@ -228,8 +288,9 @@ class AdminHomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStatItem(
-      String title, String value, IconData icon, Color color) {
+  // Thêm tham số sub để hiện mô tả nhỏ bên dưới số
+  Widget _buildStatItem(String title, String value, IconData icon, Color color,
+      {String sub = ''}) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(20),
@@ -255,32 +316,34 @@ class AdminHomeScreen extends StatelessWidget {
             Text(title,
                 style:
                 const TextStyle(color: Colors.grey, fontSize: 14)),
+            if (sub.isNotEmpty)
+              Text(sub,
+                  style: const TextStyle(
+                      color: Color(0xFFB0BEC5), fontSize: 11)),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildAdminMenu({
-    required IconData icon,
-    required String title,
-    required String sub,
-    required Color color,
-    VoidCallback? onTap,
-  }) {
+  Widget _buildAdminMenu(
+      {required IconData icon,
+        required String title,
+        required String sub,
+        required Color color,
+        VoidCallback? onTap}) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
-          boxShadow: [
-            BoxShadow(
-                color: Colors.black.withOpacity(0.02), blurRadius: 10)
-          ],
-        ),
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+            boxShadow: [
+              BoxShadow(
+                  color: Colors.black.withOpacity(0.02), blurRadius: 10)
+            ]),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [

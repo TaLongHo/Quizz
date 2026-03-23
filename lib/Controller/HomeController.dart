@@ -217,4 +217,5 @@ class HomeController {
       }
     }
   }
+  Future<List<Lesson>> getAllLessonsAdmin() => _lessonRepo.getAllLessonsAdmin();
 }

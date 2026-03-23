@@ -7,7 +7,8 @@ import '../Service/ThemeService.dart';
 
 class FillLessonDetailScreen extends StatefulWidget {
   final Lesson lesson;
-  const FillLessonDetailScreen({super.key, required this.lesson});
+  final bool isOwner; // true = có quyền edit/xóa/thêm, false = chỉ xem & chơi
+  const FillLessonDetailScreen({super.key, required this.lesson, this.isOwner = true});
 
   @override
   State<FillLessonDetailScreen> createState() => _FillLessonDetailScreenState();
@@ -82,9 +83,21 @@ class _FillLessonDetailScreenState extends State<FillLessonDetailScreen> {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: Text(widget.lesson.title, style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(widget.lesson.title, style: const TextStyle(fontWeight: FontWeight.bold)),
+            Text(
+              widget.isOwner ? "Chế độ: Điền từ" : "Chỉ xem • Điền từ",
+              style: const TextStyle(fontSize: 12, color: Colors.white70),
+            ),
+          ],
+        ),
         backgroundColor: isDark ? const Color(0xFF1A237E) : Colors.green[800],
-        actions: [IconButton(icon: const Icon(Icons.add_circle_outline), onPressed: () => _showQuestionDialog())],
+        // Nút thêm trên AppBar: chỉ hiện khi là owner
+        actions: widget.isOwner
+            ? [IconButton(icon: const Icon(Icons.add_circle_outline), onPressed: () => _showQuestionDialog())]
+            : null,
       ),
       body: FutureBuilder<List<Question>>(
         key: _refreshKey,
@@ -93,35 +106,30 @@ class _FillLessonDetailScreenState extends State<FillLessonDetailScreen> {
           if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
           final questions = snapshot.data ?? [];
           if (questions.isEmpty) return const Center(child: Text("Danh sách trống"));
-
           return ListView.builder(
             padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 120),
             itemCount: questions.length,
-            itemBuilder: (ctx, index) => _buildFillCard(index + 1, questions[index]),
+            itemBuilder: (ctx, index) => _buildFillCard(index + 1, questions[index], isDark),
           );
         },
       ),
       floatingActionButton: Column(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          FloatingActionButton.extended(
-            heroTag: "addFillBtn",
-            onPressed: () => _showQuestionDialog(),
-            label: const Text("THÊM CÂU HỎI", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-            icon: const Icon(Icons.add_circle, color: Colors.white),
-            backgroundColor: Colors.orange[800], // Màu cam cho nổi bật giống bên Quiz
-          ),
-          const SizedBox(height: 12),
+          // Nút THÊM CÂU HỎI: chỉ hiện khi là owner
+          if (widget.isOwner) ...[
+            FloatingActionButton.extended(
+              heroTag: "addFillBtn",
+              onPressed: () => _showQuestionDialog(),
+              label: const Text("THÊM CÂU HỎI", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+              icon: const Icon(Icons.add_circle, color: Colors.white),
+              backgroundColor: Colors.orange[800],
+            ),
+            const SizedBox(height: 12),
+          ],
           FloatingActionButton.extended(
             heroTag: "playFillBtn",
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => FillQuizScreen(lesson: widget.lesson), // Điều hướng sang màn hình điền từ
-                ),
-              );
-            },
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => FillQuizScreen(lesson: widget.lesson))),
             label: const Text("BẮT ĐẦU HỌC", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
             icon: const Icon(Icons.play_arrow_rounded, color: Colors.white),
             backgroundColor: isDark ? const Color(0xFF1A237E) : Colors.green[800],
@@ -131,26 +139,34 @@ class _FillLessonDetailScreenState extends State<FillLessonDetailScreen> {
     );
   }
 
-  Widget _buildFillCard(int number, Question q) {
-    bool isDark = ThemeService.isDark;
+  Widget _buildFillCard(int number, Question q, bool isDark) {
     return Card(
       color: Theme.of(context).cardColor,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
-        leading: CircleAvatar(backgroundColor: Colors.green.withOpacity(0.1), child: Text("$number", style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold))),
+        leading: CircleAvatar(
+          backgroundColor: Colors.green.withOpacity(0.1),
+          child: Text("$number", style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+        ),
         title: Text(q.content, style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontWeight: FontWeight.w500)),
         subtitle: Text("Đáp án: ${q.answer}", style: TextStyle(color: Colors.green[400], fontSize: 13)),
-        trailing: Row(
+        // Nút edit/xóa: chỉ hiện khi là owner
+        trailing: widget.isOwner
+            ? Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             IconButton(icon: const Icon(Icons.edit, size: 20, color: Colors.blue), onPressed: () => _showQuestionDialog(existing: q)),
-            IconButton(icon: const Icon(Icons.delete, size: 20, color: Colors.redAccent), onPressed: () async {
-              await _repo.deleteQuestion(q.id!);
-              _refreshData();
-            }),
+            IconButton(
+              icon: const Icon(Icons.delete, size: 20, color: Colors.redAccent),
+              onPressed: () async {
+                await _repo.deleteQuestion(q.id!);
+                _refreshData();
+              },
+            ),
           ],
-        ),
+        )
+            : null,
       ),
     );
   }
