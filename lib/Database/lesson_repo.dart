@@ -79,4 +79,19 @@ class LessonRepo {
     );
     return result > 0;
   }
+
+  // Đếm số lesson theo type (quiz/fill)
+  Future<Map<String, int>> getLessonTypeCount() async {
+    final db = await dbCore.database;
+    final result = await db.rawQuery('''
+    SELECT type, COUNT(*) as count
+    FROM lessons
+    GROUP BY type
+  ''');
+    final map = <String, int>{};
+    for (var row in result) {
+      map[row['type'] as String] = (row['count'] as int?) ?? 0;
+    }
+    return map;
+  }
 }
