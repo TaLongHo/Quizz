@@ -132,4 +132,105 @@ class UserRepo {
       print("✅ Hôm nay đã nhận Streak rồi, không cộng thêm.");
     }
   }
+
+  // Lấy danh sách top người dùng theo chuỗi streak
+  Future<List<User>> getLeaderboard({int limit = 50}) async {
+    final db = await dbCore.database;
+
+    // Thêm điều kiện WHERE role = 'user'
+    final List<Map<String, dynamic>> maps = await db.query(
+      'users',
+      where: 'role = ?', // Lọc theo role
+      whereArgs: ['user'], // Chỉ lấy những ai là user
+      orderBy: 'streak_count DESC, display_name ASC',
+      limit: limit,
+    );
+
+    return List.generate(maps.length, (i) => User.fromMap(maps[i]));
+  }
+
+  // Hàm tạo dữ liệu mẫu (Mock Data) cho bảng xếp hạng
+  Future<void> seedMockUsers() async {
+    final db = await dbCore.database;
+
+    // Kiểm tra xem đã có dữ liệu chưa để tránh chèn trùng lặp mỗi lần mở app
+    final List<Map<String, dynamic>> existingUsers = await db.query('users');
+
+    // Nếu có ít hơn 5 người, chúng ta mới tạo thêm data ảo
+    if (existingUsers.length < 5) {
+      List<Map<String, dynamic>> mockData = [
+        {
+          'username': 'nguyenvana',
+          'password': '123',
+          'display_name': 'Nguyễn Văn A',
+          'streak_count': 45,
+          'role': 'user',
+          'last_study_date': '2026-03-22',
+          'gender': 0,
+          'birthday': '2000-01-01',
+          'remind_time': '20:00'
+        },
+        {
+          'username': 'tranthib',
+          'password': '123',
+          'display_name': 'Trần Thị B',
+          'streak_count': 32,
+          'role': 'user',
+          'last_study_date': '2026-03-23',
+          'gender': 0,
+          'birthday': '2000-01-01',
+          'remind_time': '20:00'
+        },
+        {
+          'username': 'lehoangc',
+          'password': '123',
+          'display_name': 'Lê Hoàng C',
+          'streak_count': 28,
+          'role': 'user',
+          'last_study_date': '2026-03-21',
+          'gender': 0,
+          'birthday': '2000-01-01',
+          'remind_time': '20:00'
+        },
+        {
+          'username': 'phamduyd',
+          'password': '123',
+          'display_name': 'Phạm Duy D',
+          'streak_count': 15,
+          'role': 'user',
+          'last_study_date': '2026-03-23',
+          'gender': 0,
+          'birthday': '2000-01-01',
+          'remind_time': '20:00'
+        },
+        {
+          'username': 'hoangthie',
+          'password': '123',
+          'display_name': 'Hoàng Thị E',
+          'streak_count': 7,
+          'role': 'user',
+          'last_study_date': '2026-03-20',
+          'gender': 0,
+          'birthday': '2000-01-01',
+          'remind_time': '20:00'
+        },
+        {
+          'username': 'admin_test',
+          'password': '123',
+          'display_name': 'Quản Trị Viên',
+          'streak_count': 99,
+          'role': 'admin', // Tài khoản này sẽ bị lọc bỏ khỏi BXH theo logic cũ
+          'last_study_date': '2026-03-23',
+          'gender': 0,
+          'birthday': '2000-01-01',
+          'remind_time': '20:00'
+        },
+      ];
+
+      for (var user in mockData) {
+        await db.insert('users', user);
+      }
+      print("✅ Đã chèn dữ liệu mẫu thành công!");
+    }
+  }
 }
