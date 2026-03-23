@@ -149,6 +149,36 @@ class UserRepo {
     return List.generate(maps.length, (i) => User.fromMap(maps[i]));
   }
 
+  Future<List<Map<String, dynamic>>> getWeeklyProgress(int userId) async {
+    final db = await dbCore.database;
+    final List<Map<String, dynamic>> results = [];
+
+    // Lấy danh sách 7 ngày gần nhất tính từ hôm nay
+    for (int i = 6; i >= 0; i--) {
+      DateTime date = DateTime.now().subtract(Duration(days: i));
+      String dateStr = DateFormat('yyyy-MM-dd').format(date);
+
+      final List<Map<String, dynamic>> maps = await db.query(
+        'study_logs',
+        where: 'user_id = ? AND study_date = ?',
+        whereArgs: [userId, dateStr],
+      );
+
+      if (maps.isNotEmpty) {
+        results.add({
+          'day': DateFormat('E').format(date), // Thứ (Mon, Tue...)
+          'score': maps.first['score'] ?? 0.0,
+        });
+      } else {
+        results.add({
+          'day': DateFormat('E').format(date),
+          'score': 0.0,
+        });
+      }
+    }
+    return results;
+  }
+
   // Hàm tạo dữ liệu mẫu (Mock Data) cho bảng xếp hạng
   Future<void> seedMockUsers() async {
     final db = await dbCore.database;
