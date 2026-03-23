@@ -8,7 +8,8 @@ import 'package:quizz/Service/ThemeService.dart';
 
 class LessonDetailScreen extends StatefulWidget {
   final Lesson lesson;
-  const LessonDetailScreen({super.key, required this.lesson});
+  final bool isOwner; // true = có quyền edit/xóa, false = chỉ xem & chơi
+  const LessonDetailScreen({super.key, required this.lesson, this.isOwner = true});
 
   @override
   State<LessonDetailScreen> createState() => _LessonDetailScreenState();
@@ -18,7 +19,6 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
   final LessonRepo _repo = LessonRepo();
   Key _refreshKey = UniqueKey();
 
-  // Các controller cho việc thêm câu hỏi mới
   final _qController = TextEditingController();
   final _a1Controller = TextEditingController();
   final _a2Controller = TextEditingController();
@@ -27,23 +27,18 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
 
   void _refresh() => setState(() => _refreshKey = UniqueKey());
 
-  // ─── GIAO DIỆN THÊM CÂU HỎI (GIỐNG ADD LESSON SCREEN) ─────────────────
   void _showAddQuestionSheet() {
     final isDark = ThemeService.isDark;
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent, // Để làm hiệu ứng bo góc đẹp
+      backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
         decoration: BoxDecoration(
           color: Theme.of(context).scaffoldBackgroundColor,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
         ),
-        padding: EdgeInsets.only(
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
-            left: 20, right: 20, top: 20
-        ),
+        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom + 20, left: 20, right: 20, top: 20),
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -52,10 +47,7 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
               const SizedBox(height: 20),
               Text("THÊM CÂU HỎI MỚI", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: isDark ? Colors.blue[300] : Colors.blue[900])),
               const SizedBox(height: 20),
-
-              // Sử dụng lại Question Card thần thánh của ní
               _buildQuestionCard(isDark),
-
               const SizedBox(height: 20),
               SizedBox(
                 width: double.infinity,
@@ -64,10 +56,7 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
                   onPressed: () => _handleAddNewQuestion(ctx),
                   icon: const Icon(Icons.add_task_rounded, color: Colors.white),
                   label: const Text("XÁC NHẬN THÊM", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green[700],
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                  ),
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.green[700], shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))),
                 ),
               ),
             ],
@@ -77,7 +66,6 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
     );
   }
 
-  // UI của cái Card nhập liệu (Copy style từ AddLessonScreen của ní)
   Widget _buildQuestionCard(bool isDark) {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -85,7 +73,7 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey[200]!),
-        boxShadow: [if(!isDark) BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+        boxShadow: [if (!isDark) BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
       ),
       child: Column(
         children: [
@@ -122,7 +110,6 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
 
   void _handleAddNewQuestion(BuildContext ctx) async {
     if (_qController.text.isEmpty || _a1Controller.text.isEmpty) return;
-
     String options = "${_a1Controller.text}|${_a2Controller.text}|${_a3Controller.text}|${_a4Controller.text}";
     final newQ = Question(
       lessonId: widget.lesson.id!,
@@ -130,18 +117,13 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
       answer: _a1Controller.text.trim(),
       options: options,
     );
-
     await _repo.addQuestion(newQ);
-
-    // Clear dữ liệu sau khi thêm
     _qController.clear(); _a1Controller.clear(); _a2Controller.clear(); _a3Controller.clear(); _a4Controller.clear();
-
     if (mounted) Navigator.pop(ctx);
     _refresh();
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Đã thêm câu hỏi thành công!")));
   }
 
-  // ─── BUILD CHÍNH ─────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     bool isDark = ThemeService.isDark;
@@ -156,7 +138,10 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(widget.lesson.title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const Text("Chế độ: Trắc nghiệm", style: TextStyle(fontSize: 12, color: Colors.white70)),
+            Text(
+              widget.isOwner ? "Chế độ: Trắc nghiệm" : "Chỉ xem • Trắc nghiệm",
+              style: const TextStyle(fontSize: 12, color: Colors.white70),
+            ),
           ],
         ),
         flexibleSpace: Container(decoration: BoxDecoration(gradient: LinearGradient(colors: brandGradient))),
@@ -168,27 +153,27 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
           if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
           final questions = snapshot.data ?? [];
           if (questions.isEmpty) return Center(child: Text("Chưa có câu hỏi nào", style: TextStyle(color: isDark ? Colors.white30 : Colors.grey)));
-
           return ListView.builder(
-            padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 100), // Cách đáy để không bị FAB đè
+            padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 100),
             itemCount: questions.length,
-            itemBuilder: (context, index) => _buildQuestionCardDisplay(index + 1, questions[index]),
+            itemBuilder: (context, index) => _buildQuestionCardDisplay(index + 1, questions[index], isDark),
           );
         },
       ),
-
-      // THAY ĐỔI Ở ĐÂY: Dùng Floating Action Button để nút thêm cực kỳ nổi bật
       floatingActionButton: Column(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          FloatingActionButton.extended(
-            heroTag: "addBtn",
-            onPressed: _showAddQuestionSheet,
-            label: const Text("THÊM CÂU HỎI", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-            icon: const Icon(Icons.add_circle, color: Colors.white),
-            backgroundColor: Colors.orange[800], // Màu cam rực rỡ cho nổi bật
-          ),
-          const SizedBox(height: 12),
+          // Nút THÊM CÂU HỎI: chỉ hiện khi là owner
+          if (widget.isOwner) ...[
+            FloatingActionButton.extended(
+              heroTag: "addBtn",
+              onPressed: _showAddQuestionSheet,
+              label: const Text("THÊM CÂU HỎI", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+              icon: const Icon(Icons.add_circle, color: Colors.white),
+              backgroundColor: Colors.orange[800],
+            ),
+            const SizedBox(height: 12),
+          ],
           FloatingActionButton.extended(
             heroTag: "playBtn",
             onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => QuizScreen(lesson: widget.lesson))),
@@ -201,9 +186,7 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
     );
   }
 
-  // Giao diện hiển thị từng câu hỏi trong danh sách
-  Widget _buildQuestionCardDisplay(int number, Question q) {
-    bool isDark = ThemeService.isDark;
+  Widget _buildQuestionCardDisplay(int number, Question q, bool isDark) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
@@ -220,15 +203,23 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text("CÂU $number", style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.blue[300] : Colors.blue[900], fontSize: 12)),
-                Row(
-                  children: [
-                    IconButton(icon: const Icon(Icons.edit, color: Colors.orange, size: 20), onPressed: () async {
-                      final updated = await Navigator.push<bool>(context, MaterialPageRoute(builder: (_) => UpdateQuizScreen(lesson: widget.lesson, question: q)));
-                      if (updated == true) _refresh();
-                    }),
-                    IconButton(icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20), onPressed: () => _deleteQuestion(q)),
-                  ],
-                ),
+                // Nút edit/xóa: chỉ hiện khi là owner
+                if (widget.isOwner)
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.edit, color: Colors.orange, size: 20),
+                        onPressed: () async {
+                          final updated = await Navigator.push<bool>(context, MaterialPageRoute(builder: (_) => UpdateQuizScreen(lesson: widget.lesson, question: q)));
+                          if (updated == true) _refresh();
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
+                        onPressed: () => _deleteQuestion(q),
+                      ),
+                    ],
+                  ),
               ],
             ),
             Text(q.content, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: isDark ? Colors.white : Colors.black87)),
@@ -246,7 +237,6 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
     );
   }
 
-  // Giữ lại hàm xóa câu hỏi cũ của ní
   Future<void> _deleteQuestion(Question q) async {
     final confirm = await showDialog<bool>(
       context: context,

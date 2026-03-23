@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:quizz/Views/StudyChart.dart';
 import '../Models/User.dart';
 import '../Controller/ProfileController.dart';
-import '../Service/ThemeService.dart'; // Đảm bảo đã có file này
+import '../Service/ThemeService.dart';
+import '../Database/user_repo.dart'; // Đã thêm
 
 class ProfileScreen extends StatefulWidget {
   final User user;
@@ -14,6 +16,7 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final ProfileController _controller = ProfileController();
+  final UserRepo _userRepo = UserRepo(); // Khai báo Repo để lấy dữ liệu biểu đồ
   late User currentUser;
 
   @override
@@ -22,6 +25,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     currentUser = widget.user;
   }
 
+  // Hàm chọn ngày sinh (Giữ nguyên logic của ông)
   Future<void> _selectDate(BuildContext context, TextEditingController controller, StateSetter setModalState) async {
     DateTime initialDate = DateTime.tryParse(currentUser.birthday) ?? DateTime(2000, 1, 1);
 
@@ -38,7 +42,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               onPrimary: Colors.white,
               onSurface: ThemeService.isDark ? Colors.white : Colors.black,
             ),
-            dialogBackgroundColor: Theme.of(context).scaffoldBackgroundColor,
           ),
           child: child!,
         );
@@ -52,6 +55,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  // Dialog chỉnh sửa hồ sơ (Giữ nguyên logic của ông)
   void _showEditProfileDialog() {
     final nameController = TextEditingController(text: currentUser.displayName);
     final birthdayController = TextEditingController(text: currentUser.birthday);
@@ -74,34 +78,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Text("Chỉnh sửa hồ sơ",
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: ThemeService.isDark ? Colors.white : Colors.black87)),
               const SizedBox(height: 20),
-
               TextField(
                 controller: nameController,
                 style: TextStyle(color: ThemeService.isDark ? Colors.white : Colors.black),
-                decoration: const InputDecoration(
-                  labelText: "Tên hiển thị",
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.person_outline),
-                ),
+                decoration: const InputDecoration(labelText: "Tên hiển thị", border: OutlineInputBorder(), prefixIcon: Icon(Icons.person_outline)),
               ),
               const SizedBox(height: 15),
-
               TextField(
                 controller: birthdayController,
                 readOnly: true,
                 onTap: () => _selectDate(context, birthdayController, setModalState),
                 style: TextStyle(color: ThemeService.isDark ? Colors.white : Colors.black),
-                decoration: const InputDecoration(
-                  labelText: "Ngày sinh",
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.cake_outlined),
-                  suffixIcon: Icon(Icons.calendar_today),
-                ),
+                decoration: const InputDecoration(labelText: "Ngày sinh", border: OutlineInputBorder(), prefixIcon: Icon(Icons.cake_outlined), suffixIcon: Icon(Icons.calendar_today)),
               ),
               const SizedBox(height: 20),
-
-              Align(alignment: Alignment.centerLeft,
-                  child: Text("Giới tính:", style: TextStyle(fontWeight: FontWeight.bold, color: ThemeService.isDark ? Colors.white70 : Colors.black87))),
+              Align(alignment: Alignment.centerLeft, child: Text("Giới tính:", style: TextStyle(fontWeight: FontWeight.bold, color: ThemeService.isDark ? Colors.white70 : Colors.black87))),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
@@ -111,7 +102,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ],
               ),
               const SizedBox(height: 25),
-
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -127,7 +117,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       streakCount: currentUser.streakCount,
                       remindTime: currentUser.remindTime,
                     );
-
                     bool success = await _controller.updateUserInfo(updatedUser);
                     if (success) {
                       setState(() => currentUser = updatedUser);
@@ -135,11 +124,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Cập nhật thành công!")));
                     }
                   },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue[900],
-                    padding: const EdgeInsets.symmetric(vertical: 15),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.blue[900], padding: const EdgeInsets.symmetric(vertical: 15), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                   child: const Text("LƯU THAY ĐỔI", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                 ),
               ),
@@ -155,9 +140,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = ThemeService.isDark;
-    final List<Color> brandGradient = isDark
-        ? [const Color(0xFF1A237E), const Color(0xFF4A148C)] // Tông tối sang trọng
-        : [const Color(0xFF0D47A1), const Color(0xFF6A1B9A)]; // Tông sáng rực rỡ
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -167,13 +149,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         backgroundColor: isDark ? theme.cardColor : Colors.blue[900],
         elevation: 0,
         foregroundColor: Colors.white,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context, currentUser),
-        ),
-        actions: [
-          IconButton(onPressed: _showEditProfileDialog, icon: const Icon(Icons.edit_square))
-        ],
+        leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => Navigator.pop(context, currentUser)),
+        actions: [IconButton(onPressed: _showEditProfileDialog, icon: const Icon(Icons.edit_square))],
       ),
       body: SingleChildScrollView(
         child: Column(
@@ -183,7 +160,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               padding: const EdgeInsets.all(20),
               child: Column(
                 children: [
-                  // CARD: CÀI ĐẶT GIAO DIỆN
+                  // 1. CARD: CÀI ĐẶT GIAO DIỆN
                   _buildInfoCard(
                     title: "Cài đặt ứng dụng",
                     items: [
@@ -204,7 +181,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   const SizedBox(height: 20),
 
-                  // CARD: THÔNG TIN CƠ BẢN
+                  // 2. MỚI: CARD BIỂU ĐỒ PHÂN TÍCH (Điểm nhấn báo cáo)
+                  _buildInfoCard(
+                    title: "Phân tích học tập (7 ngày qua)",
+                    items: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(10, 20, 20, 10),
+                        child: FutureBuilder<List<Map<String, dynamic>>>(
+                          future: _userRepo.getWeeklyProgress(currentUser.id!),
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState == ConnectionState.waiting) {
+                              return const Center(child: SizedBox(height: 150, child: CircularProgressIndicator()));
+                            }
+                            if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+                              return const Center(child: Padding(
+                                padding: EdgeInsets.all(20.0),
+                                child: Text("Chưa có dữ liệu học tập"),
+                              ));
+                            }
+                            return StudyChart(data: snapshot.data!, isDark: isDark);
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  // 3. CARD: THÔNG TIN CƠ BẢN
                   _buildInfoCard(
                     title: "Thông tin cơ bản",
                     items: [
@@ -215,7 +218,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   const SizedBox(height: 20),
 
-                  // CARD: THÀNH TÍCH
+                  // 4. CARD: THÀNH TÍCH
                   _buildInfoCard(
                     title: "Học tập",
                     items: [
@@ -234,6 +237,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  // --- Các Widget phụ trợ xây dựng giao diện ---
+
   Widget _buildHeader(bool isDark) {
     return Container(
       width: double.infinity,
@@ -246,9 +251,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         children: [
           const CircleAvatar(radius: 55, backgroundColor: Colors.white24, child: Icon(Icons.person, size: 70, color: Colors.white)),
           const SizedBox(height: 15),
-          Text(currentUser.displayName, style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+          Text(currentUser.displayName, style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
           const SizedBox(height: 5),
-          Text("@${currentUser.username}", style: const TextStyle(color: Colors.white70, fontSize: 16)),
+          Text("@${currentUser.username}", style: const TextStyle(color: Colors.white70, fontSize: 14)),
         ],
       ),
     );
@@ -257,12 +262,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildInfoCard({required String title, required List<Widget> items}) {
     final isDark = ThemeService.isDark;
     return Container(
+      width: double.infinity,
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          if (!isDark) BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))
-        ],
+        boxShadow: [if (!isDark) BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Padding(
@@ -313,12 +317,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Radio<int>(
-          value: value,
-          groupValue: groupValue,
-          onChanged: onChanged,
-          activeColor: Colors.blue[900],
-        ),
+        Radio<int>(value: value, groupValue: groupValue, onChanged: onChanged, activeColor: Colors.blue[900]),
         Text(label, style: TextStyle(color: ThemeService.isDark ? Colors.white70 : Colors.black87)),
       ],
     );
