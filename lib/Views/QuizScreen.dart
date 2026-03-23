@@ -4,6 +4,7 @@ import '../Models/Question.dart';
 import '../Database/lesson_repo.dart';
 import '../Database/user_repo.dart';
 import '../Service/ThemeService.dart';
+import 'ResultScreen.dart';
 
 class QuizScreen extends StatefulWidget {
   final Lesson lesson;
@@ -56,19 +57,15 @@ class _QuizScreenState extends State<QuizScreen> {
 
   void _handleAnswer(String option) {
     if (!_canInteract) return;
-
     setState(() {
       _selectedOption = option;
       _canInteract = false;
-
-      bool isCorrect = (option == _questions[_currentIndex].answer);
-      if (isCorrect) {
+      if (option == _questions[_currentIndex].answer) {
         _correctCount++;
       } else {
         _wrongQuestions.add(_questions[_currentIndex]);
       }
     });
-
     Future.delayed(const Duration(milliseconds: 1200), () {
       if (mounted) {
         if (_currentIndex < _questions.length - 1) {
@@ -94,9 +91,22 @@ class _QuizScreenState extends State<QuizScreen> {
     final isDark = ThemeService.isDark;
 
     if (_questions.isEmpty) {
-      return Scaffold(body: Center(child: CircularProgressIndicator(color: Theme.of(context).primaryColor)));
+      return Scaffold(
+          body: Center(
+              child: CircularProgressIndicator(
+                  color: Theme.of(context).primaryColor)));
     }
-    if (_isFinished) return _buildResultScreen();
+
+    if (_isFinished) {
+      return ResultScreen(
+        data: ResultData(
+          correctCount: _correctCount,
+          totalCount: _questions.length,
+          lessonTitle: widget.lesson.title,
+          lessonType: 'quiz',
+        ),
+      );
+    }
 
     final currentQ = _questions[_currentIndex];
     final brandGradient = isDark
@@ -106,9 +116,14 @@ class _QuizScreenState extends State<QuizScreen> {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: Text("Câu ${_currentIndex + 1}/${_questions.length}", style: const TextStyle(fontWeight: FontWeight.bold)),
-        leading: IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
-        flexibleSpace: Container(decoration: BoxDecoration(gradient: LinearGradient(colors: brandGradient))),
+        title: Text("Câu ${_currentIndex + 1}/${_questions.length}",
+            style: const TextStyle(fontWeight: FontWeight.bold)),
+        leading: IconButton(
+            icon: const Icon(Icons.close),
+            onPressed: () => Navigator.pop(context)),
+        flexibleSpace: Container(
+            decoration:
+            BoxDecoration(gradient: LinearGradient(colors: brandGradient))),
       ),
       body: Column(
         children: [
@@ -124,16 +139,14 @@ class _QuizScreenState extends State<QuizScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 20),
-                  Text(
-                    currentQ.content,
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: isDark ? Colors.white : Colors.black87,
-                    ),
-                  ),
+                  Text(currentQ.content,
+                      style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.white : Colors.black87)),
                   const SizedBox(height: 40),
-                  ..._shuffledOptions.map((opt) => _buildOptionCard(opt, currentQ.answer, isDark)),
+                  ..._shuffledOptions.map(
+                          (opt) => _buildOptionCard(opt, currentQ.answer, isDark)),
                 ],
               ),
             ),
@@ -147,8 +160,8 @@ class _QuizScreenState extends State<QuizScreen> {
     bool isSelected = _selectedOption == option;
     bool isCorrectAnswer = option == correctAnswer;
 
-    // Màu sắc động dựa trên trạng thái và Theme
-    Color borderColor = isDark ? Colors.white.withOpacity(0.1) : Colors.grey[300]!;
+    Color borderColor =
+    isDark ? Colors.white.withOpacity(0.1) : Colors.grey[300]!;
     Color bgColor = Theme.of(context).cardColor;
     Color textColor = isDark ? Colors.white70 : Colors.black87;
 
@@ -175,18 +188,22 @@ class _QuizScreenState extends State<QuizScreen> {
           borderRadius: BorderRadius.circular(15),
           border: Border.all(color: borderColor, width: 2),
           boxShadow: [
-            if (!isDark) BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))
+            if (!isDark)
+              BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4))
           ],
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Expanded(
-              child: Text(
-                option,
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: textColor),
-              ),
-            ),
+                child: Text(option,
+                    style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: textColor))),
             if (_selectedOption != null && isCorrectAnswer)
               const Icon(Icons.check_circle_rounded, color: Colors.greenAccent),
             if (_selectedOption != null && isSelected && !isCorrectAnswer)
@@ -194,106 +211,6 @@ class _QuizScreenState extends State<QuizScreen> {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildResultScreen() {
-    final isDark = ThemeService.isDark;
-    double percent = (_correctCount / _questions.length) * 100;
-
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                percent >= 80 ? "TUYỆT VỜI! 🎉" : "CỐ GẮNG LÊN! 💪",
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: isDark ? Colors.white : Colors.blue[900],
-                ),
-              ),
-              const SizedBox(height: 30),
-              Stack(
-                alignment: Alignment.center,
-                children: [
-                  SizedBox(
-                    width: 180, height: 180,
-                    child: CircularProgressIndicator(
-                      value: percent / 100,
-                      strokeWidth: 12,
-                      backgroundColor: isDark ? Colors.white10 : Colors.grey[200],
-                      color: percent >= 50 ? Colors.blueAccent : Colors.orangeAccent,
-                    ),
-                  ),
-                  Text(
-                      "${percent.toInt()}%",
-                      style: TextStyle(fontSize: 40, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)
-                  ),
-                ],
-              ),
-              const SizedBox(height: 40),
-              _buildStatRow(Icons.check_circle, "Đúng", "$_correctCount", Colors.greenAccent),
-              const SizedBox(height: 12),
-              _buildStatRow(Icons.cancel, "Sai", "${_questions.length - _correctCount}", Colors.redAccent),
-              const SizedBox(height: 30),
-
-              if (_wrongQuestions.isNotEmpty) ...[
-                Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text("Cần chú ý:", style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white70 : Colors.black54))
-                ),
-                const SizedBox(height: 10),
-                ..._wrongQuestions.take(2).map((q) => Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey[100],
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.help_outline, size: 16, color: Colors.orangeAccent),
-                      const SizedBox(width: 10),
-                      Expanded(child: Text(q.content, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13))),
-                    ],
-                  ),
-                )),
-              ],
-              const Spacer(),
-              SizedBox(
-                width: double.infinity,
-                height: 55,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: isDark ? Colors.blue[700] : Colors.blue[900],
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                    elevation: 0,
-                  ),
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text("HOÀN TẤT", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 16)),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatRow(IconData icon, String label, String value, Color color) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(icon, color: color, size: 20),
-        const SizedBox(width: 10),
-        Text("$label: ", style: const TextStyle(fontSize: 16)),
-        Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: color)),
-      ],
     );
   }
 }
