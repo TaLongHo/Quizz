@@ -24,10 +24,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   late User currentUser;
   Key _refreshKey = UniqueKey();
 
-  // Main tab controller (Của tôi / Khám phá)
   late TabController _mainTabController;
 
-  // Biến quản lý tìm kiếm
   String _searchQuery = "";
   String _exploreSearchQuery = "";
 
@@ -64,7 +62,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     );
   }
 
-  // isOwner mặc định true cho tab "Của tôi", truyền rõ khi từ tab "Khám phá"
   void _navigateToDetail(Lesson lesson, {bool isOwner = true}) {
     Navigator.push(
       context,
@@ -132,8 +129,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 const SizedBox(height: 20),
                 _buildStreakCard(),
                 const SizedBox(height: 15),
-
-                // Main Tab Bar (Của tôi / Khám phá)
                 Container(
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.15),
@@ -175,66 +170,95 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   // ========================
   // TAB 1: HỌC PHẦN CỦA TÔI
+  // FIX: Bỏ Padding bọc ngoài toàn bộ, tách thành phần fixed + Expanded
   // ========================
   Widget _buildMyLessonsTab(ThemeData theme, bool isDark) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text("Hành động nhanh", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)),
-          const SizedBox(height: 15),
-          _buildQuickAction(theme, isDark),
-          const SizedBox(height: 25),
-
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Phần fixed height — không nằm trong Expanded
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text("Học phần của bạn", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)),
-              if (_searchQuery.isNotEmpty)
-                IconButton(icon: const Icon(Icons.close, size: 20, color: Colors.grey), onPressed: () => setState(() => _searchQuery = "")),
+              Text("Hành động nhanh",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)),
+              const SizedBox(height: 15),
+              _buildQuickAction(theme, isDark),
+              const SizedBox(height: 25),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text("Học phần của bạn",
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)),
+                  if (_searchQuery.isNotEmpty)
+                    IconButton(
+                        icon: const Icon(Icons.close, size: 20, color: Colors.grey),
+                        onPressed: () => setState(() => _searchQuery = "")),
+                ],
+              ),
+              const SizedBox(height: 10),
+              _buildSearchBar(isDark, _searchQuery, (v) => setState(() => _searchQuery = v)),
+              const SizedBox(height: 10),
             ],
           ),
-          const SizedBox(height: 10),
-          _buildSearchBar(isDark, _searchQuery, (v) => setState(() => _searchQuery = v)),
-          const SizedBox(height: 10),
+        ),
 
-          Expanded(
-            child: DefaultTabController(
-              length: 2,
-              child: Column(
-                children: [
-                  TabBar(
+        // Phần Expanded — tab + danh sách học phần
+        Expanded(
+          child: DefaultTabController(
+            length: 2,
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: TabBar(
                     labelColor: isDark ? Colors.blue[300] : Colors.blue[900],
                     unselectedLabelColor: Colors.grey,
                     indicatorColor: isDark ? Colors.blue[300] : Colors.blue[900],
                     tabs: const [Tab(text: "Trắc nghiệm"), Tab(text: "Điền từ")],
                   ),
-                  Expanded(
-                    child: FutureBuilder<Map<String, List<Lesson>>>(
-                      key: _refreshKey,
-                      future: _controller.getCategorizedLessons(widget.user.id!),
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-                        final rawQuizList = snapshot.data?['quiz'] ?? [];
-                        final rawFillList = snapshot.data?['fill'] ?? [];
-                        final quizList = rawQuizList.where((l) => l.title.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
-                        final fillList = rawFillList.where((l) => l.title.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
-                        return TabBarView(
+                ),
+                Expanded(
+                  child: FutureBuilder<Map<String, List<Lesson>>>(
+                    key: _refreshKey,
+                    future: _controller.getCategorizedLessons(widget.user.id!),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      final rawQuizList = snapshot.data?['quiz'] ?? [];
+                      final rawFillList = snapshot.data?['fill'] ?? [];
+                      final quizList = rawQuizList
+                          .where((l) => l.title.toLowerCase().contains(_searchQuery.toLowerCase()))
+                          .toList();
+                      final fillList = rawFillList
+                          .where((l) => l.title.toLowerCase().contains(_searchQuery.toLowerCase()))
+                          .toList();
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: TabBarView(
                           children: [
-                            _buildLessonPageList(quizList, _searchQuery.isEmpty ? "Chưa có bộ trắc nghiệm nào" : "Không tìm thấy kết quả", _quizPageController),
-                            _buildLessonPageList(fillList, _searchQuery.isEmpty ? "Chưa có bộ điền từ nào" : "Không tìm thấy kết quả", _fillPageController),
+                            _buildLessonPageList(
+                                quizList,
+                                _searchQuery.isEmpty ? "Chưa có bộ trắc nghiệm nào" : "Không tìm thấy kết quả",
+                                _quizPageController),
+                            _buildLessonPageList(
+                                fillList,
+                                _searchQuery.isEmpty ? "Chưa có bộ điền từ nào" : "Không tìm thấy kết quả",
+                                _fillPageController),
                           ],
-                        );
-                      },
-                    ),
+                        ),
+                      );
+                    },
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -250,7 +274,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text("Tất cả học phần", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)),
+              Text("Tất cả học phần",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(color: Colors.blue.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
@@ -258,7 +283,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   children: [
                     Icon(Icons.public, size: 14, color: isDark ? Colors.blue[300] : Colors.blue[700]),
                     const SizedBox(width: 4),
-                    Text("Toàn bộ", style: TextStyle(fontSize: 12, color: isDark ? Colors.blue[300] : Colors.blue[700], fontWeight: FontWeight.w500)),
+                    Text("Toàn bộ",
+                        style: TextStyle(fontSize: 12, color: isDark ? Colors.blue[300] : Colors.blue[700], fontWeight: FontWeight.w500)),
                   ],
                 ),
               ),
@@ -267,7 +293,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           const SizedBox(height: 10),
           _buildSearchBar(isDark, _exploreSearchQuery, (v) => setState(() => _exploreSearchQuery = v), hint: "Tìm kiếm học phần..."),
           const SizedBox(height: 10),
-
           Expanded(
             child: FutureBuilder<List<Lesson>>(
               key: _refreshKey,
@@ -282,12 +307,15 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   ]));
                 }
                 final allLessons = snapshot.data ?? [];
-                final filtered = allLessons.where((l) => l.title.toLowerCase().contains(_exploreSearchQuery.toLowerCase())).toList();
+                final filtered = allLessons
+                    .where((l) => l.title.toLowerCase().contains(_exploreSearchQuery.toLowerCase()))
+                    .toList();
                 if (filtered.isEmpty) {
                   return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                     Icon(Icons.search_off, size: 52, color: Colors.grey[400]),
                     const SizedBox(height: 12),
-                    Text(_exploreSearchQuery.isEmpty ? "Chưa có học phần nào" : "Không tìm thấy kết quả", style: const TextStyle(color: Colors.grey)),
+                    Text(_exploreSearchQuery.isEmpty ? "Chưa có học phần nào" : "Không tìm thấy kết quả",
+                        style: const TextStyle(color: Colors.grey)),
                   ]));
                 }
                 final quizCount = filtered.where((l) => l.type == 'quiz').length;
@@ -358,12 +386,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 margin: const EdgeInsets.only(left: 6),
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(color: Colors.blue.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-                child: Text("Của tôi", style: TextStyle(fontSize: 10, color: isDark ? Colors.blue[300] : Colors.blue[700], fontWeight: FontWeight.w500)),
+                child: Text("Của tôi",
+                    style: TextStyle(fontSize: 10, color: isDark ? Colors.blue[300] : Colors.blue[700], fontWeight: FontWeight.w500)),
               ),
           ],
         ),
         subtitle: Text(lesson.type == 'quiz' ? "Trắc nghiệm" : "Điền từ", style: const TextStyle(fontSize: 12)),
-        // Chỉ owner mới thấy nút more_vert, người khác chỉ thấy arrow
         trailing: isOwner
             ? IconButton(icon: const Icon(Icons.more_vert, size: 20), onPressed: () => _showLessonOptions(lesson))
             : const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
@@ -403,47 +431,87 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   Widget _buildLessonPageList(List<Lesson> allLessons, String emptyMessage, PageController pageController) {
     bool isDark = ThemeService.isDark;
-    if (allLessons.isEmpty) return Center(child: Text(emptyMessage, style: const TextStyle(color: Colors.grey)));
+    if (allLessons.isEmpty) {
+      return Center(child: Text(emptyMessage, style: const TextStyle(color: Colors.grey)));
+    }
     List<List<Lesson>> pages = _chunkLessons(allLessons, 3);
-    return Column(
-      children: [
-        Expanded(
-          child: PageView.builder(
-            controller: pageController,
-            itemCount: pages.length,
-            itemBuilder: (context, pageIndex) => ListView.builder(
-              padding: const EdgeInsets.only(top: 10),
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: pages[pageIndex].length,
-              // Tab "Của tôi" → isOwner luôn true
-              itemBuilder: (context, index) => _buildLessonCard(pages[pageIndex][index], isDark),
+
+    // Chiều cao cố định mỗi indicator dot row
+    const double indicatorHeight = 36.0;
+    final bool hasIndicator = pages.length > 1;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Chiều cao dành cho PageView (trừ indicator nếu có)
+        final double pageViewHeight = constraints.maxHeight - (hasIndicator ? indicatorHeight : 0);
+        // Chiều cao mỗi card = chia đều 3 slot, trừ padding top 10
+        final double cardHeight = (pageViewHeight - 10) / 3;
+
+        return Column(
+          children: [
+            SizedBox(
+              height: pageViewHeight,
+              child: PageView.builder(
+                controller: pageController,
+                itemCount: pages.length,
+                itemBuilder: (context, pageIndex) {
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 10),
+                    child: Column(
+                      children: pages[pageIndex]
+                          .map((lesson) => SizedBox(
+                        height: cardHeight,
+                        child: _buildLessonCard(lesson, isDark),
+                      ))
+                          .toList(),
+                    ),
+                  );
+                },
+              ),
             ),
-          ),
-        ),
-        if (pages.length > 1) _buildPageIndicator(pages.length, pageController, isDark),
-      ],
+            if (hasIndicator) _buildPageIndicator(pages.length, pageController, isDark),
+          ],
+        );
+      },
     );
   }
 
+  // FIX: dense + giảm padding + giảm margin để 3 card vừa không bị clip
   Widget _buildLessonCard(Lesson lesson, bool isDark) {
     return Card(
       elevation: 0,
       color: Theme.of(context).cardColor,
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 6),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(15),
         side: BorderSide(color: isDark ? Colors.white.withOpacity(0.1) : Colors.grey[200]!),
       ),
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
+        dense: true,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 0),
         leading: CircleAvatar(
+          radius: 20,
           backgroundColor: lesson.type == 'quiz' ? Colors.blue.withOpacity(0.1) : Colors.green.withOpacity(0.1),
-          child: Icon(lesson.type == 'quiz' ? Icons.quiz_outlined : Icons.text_fields_outlined,
-              color: lesson.type == 'quiz' ? Colors.blue : Colors.green),
+          child: Icon(
+            lesson.type == 'quiz' ? Icons.quiz_outlined : Icons.text_fields_outlined,
+            color: lesson.type == 'quiz' ? Colors.blue : Colors.green,
+            size: 20,
+          ),
         ),
-        title: Text(lesson.title, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text(lesson.type == 'quiz' ? "Trắc nghiệm" : "Điền từ", style: const TextStyle(fontSize: 12)),
-        trailing: IconButton(icon: const Icon(Icons.more_vert, size: 20), onPressed: () => _showLessonOptions(lesson)),
+        title: Text(
+          lesson.title,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        subtitle: Text(
+          lesson.type == 'quiz' ? "Trắc nghiệm" : "Điền từ",
+          style: const TextStyle(fontSize: 11),
+        ),
+        trailing: IconButton(
+          icon: const Icon(Icons.more_vert, size: 20),
+          onPressed: () => _showLessonOptions(lesson),
+        ),
         onTap: () => _navigateToDetail(lesson, isOwner: true),
       ),
     );
@@ -503,15 +571,19 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           int page = controller.hasClients ? controller.page?.round() ?? 0 : 0;
           return Row(
             mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(count, (i) => AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              height: 8, width: i == page ? 22 : 8,
-              decoration: BoxDecoration(
-                color: i == page ? (isDark ? Colors.blue[300] : Colors.blue[900]) : Colors.grey[300],
-                borderRadius: BorderRadius.circular(10),
+            children: List.generate(
+              count,
+                  (i) => AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                height: 8,
+                width: i == page ? 22 : 8,
+                decoration: BoxDecoration(
+                  color: i == page ? (isDark ? Colors.blue[300] : Colors.blue[900]) : Colors.grey[300],
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
-            )),
+            ),
           );
         },
       ),
@@ -530,11 +602,17 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         ),
         child: Row(
           children: [
-            Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: Colors.blue.withOpacity(0.1), borderRadius: BorderRadius.circular(15)), child: const Icon(Icons.add_box_rounded, color: Colors.blue, size: 30)),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: Colors.blue.withOpacity(0.1), borderRadius: BorderRadius.circular(15)),
+              child: const Icon(Icons.add_box_rounded, color: Colors.blue, size: 30),
+            ),
             const SizedBox(width: 20),
             Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text("Thêm học phần mới", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)),
-              Text("Tạo chủ đề học tập của riêng bạn", style: TextStyle(color: isDark ? Colors.white60 : Colors.grey, fontSize: 13)),
+              Text("Thêm học phần mới",
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)),
+              Text("Tạo chủ đề học tập của riêng bạn",
+                  style: TextStyle(color: isDark ? Colors.white60 : Colors.grey, fontSize: 13)),
             ]),
             const Spacer(),
             const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
@@ -560,7 +638,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text("${currentUser.streakCount} Ngày liên tiếp", style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                      Text("${currentUser.streakCount} Ngày liên tiếp",
+                          style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
                       const Text("Xem lịch học tập", style: TextStyle(color: Colors.white60, fontSize: 12)),
                     ],
                   ),
