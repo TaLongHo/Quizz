@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:quizz/Database/study_log_repo.dart';
+import 'package:quizz/Database/user_repo.dart';
 import 'package:quizz/Service/ThemeService.dart';
 import 'package:quizz/Views/LessonDetailScreen.dart';
+import 'package:quizz/Views/LeaderboardScreen.dart'; // Đã thêm import này
 import '../Models/User.dart';
 import '../Models/Lesson.dart';
 import '../Controller/HomeController.dart';
@@ -18,6 +20,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final HomeController _controller = HomeController();
+  final UserRepo _userRepo = UserRepo();
   late User currentUser;
   Key _refreshKey = UniqueKey();
 
@@ -31,6 +34,8 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     currentUser = widget.user;
+
+    _userRepo.seedMockUsers();
   }
 
   @override
@@ -44,6 +49,16 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _refreshKey = UniqueKey();
     });
+  }
+
+  // Hàm điều hướng sang Bảng xếp hạng
+  void _navigateToLeaderboard() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => LeaderboardScreen(currentUser: currentUser),
+      ),
+    );
   }
 
   void _navigateToDetail(Lesson lesson) {
@@ -371,18 +386,65 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildStreakCard() {
-    return GestureDetector(
-      onTap: () => _controller.showStreakCalendar(context, currentUser, (u) => setState(() => currentUser = u)),
-      child: Container(
-        padding: const EdgeInsets.all(15),
-        decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), borderRadius: BorderRadius.circular(20)),
-        child: Row(children: [
-          const Icon(Icons.local_fire_department, color: Colors.orangeAccent, size: 30),
-          const SizedBox(width: 10),
-          Text("${currentUser.streakCount} Ngày liên tiếp", style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-          const Spacer(),
-          const Icon(Icons.calendar_month, color: Colors.white70),
-        ]),
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        children: [
+          // Phần bên trái: Xem lịch cá nhân
+          Expanded(
+            child: GestureDetector(
+              onTap: () => _controller.showStreakCalendar(
+                  context, currentUser, (u) => setState(() => currentUser = u)),
+              child: Row(
+                children: [
+                  const Icon(Icons.local_fire_department, color: Colors.orangeAccent, size: 30),
+                  const SizedBox(width: 10),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "${currentUser.streakCount} Ngày liên tiếp",
+                        style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      const Text("Xem lịch học tập", style: TextStyle(color: Colors.white60, fontSize: 12)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // Vạch ngăn cách dọc
+          Container(
+            width: 1,
+            height: 30,
+            color: Colors.white24,
+            margin: const EdgeInsets.symmetric(horizontal: 10),
+          ),
+
+          // Phần bên phải: Xem bảng xếp hạng chung
+          GestureDetector(
+            onTap: _navigateToLeaderboard,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.orangeAccent.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.leaderboard_rounded, color: Colors.orangeAccent, size: 20),
+                  SizedBox(width: 5),
+                  Text("Hạng", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
