@@ -20,26 +20,37 @@ class DbCore {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2, // ⬆️ Tăng lên 2 để chạy onUpgrade
       onCreate: _createDB,
+      onUpgrade: _upgradeDB,
       onConfigure: (db) async => await db.execute('PRAGMA foreign_keys = ON'),
     );
   }
 
+  // ─── MIGRATION: Thêm cột is_active vào DB cũ ─────────────────────────────
+  Future _upgradeDB(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute(
+        'ALTER TABLE users ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1',
+      );
+    }
+  }
+
   Future _createDB(Database db, int version) async {
-    // 1. Bảng Users (Full: Role, Gender, Birthday)
+    // 1. Bảng Users
     await db.execute('''
       CREATE TABLE users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE NOT NULL,
         password TEXT NOT NULL,
         display_name TEXT NOT NULL,
-        role TEXT NOT NULL DEFAULT 'user', -- 'admin' hoặc 'user'
-        gender INTEGER,                    -- 0: Nam, 1: Nữ, 2: Khác
-        birthday TEXT,                     -- YYYY-MM-DD
+        role TEXT NOT NULL DEFAULT 'user',
+        gender INTEGER,
+        birthday TEXT,
         streak_count INTEGER DEFAULT 0,
-        last_study_date TEXT,      
-        remind_time TEXT DEFAULT '20:00'
+        last_study_date TEXT,
+        remind_time TEXT DEFAULT '20:00',
+        is_active INTEGER NOT NULL DEFAULT 1
       )
     ''');
 
@@ -67,7 +78,7 @@ class DbCore {
       )
     ''');
 
-    // 4. Bảng StudyLogs (Lịch học)
+    // 4. Bảng StudyLogs
     await db.execute('''
       CREATE TABLE study_logs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -83,170 +94,44 @@ class DbCore {
   }
 
   Future _seedData(Database db) async {
-    // ════════════════════════════════════════════
-    // 1. USERS
-    // ════════════════════════════════════════════
     await db.insert('users', {
       'username': 'admin',
       'password': '123',
       'display_name': 'Quản Trị Viên',
       'role': 'admin',
       'gender': 0,
-      'birthday': '1990-01-01',
-      'streak_count': 0,
-      'remind_time': '08:00',
+      'birthday': '1995-01-01',
+      'is_active': 1,
     });
 
-    // 10 học viên với streak đa dạng
-    final List<Map<String, dynamic>> users = [
-      {
-        'username': 'anhnv',
-        'display_name': 'Nguyễn Văn Anh',
-        'gender': 0,
-        'birthday': '2001-03-15',
-        'streak_count': 52,
-        'last_study_date': '2026-03-23',
-        'remind_time': '20:00',
-      },
-      {
-        'username': 'user1',
-        'display_name': 'Nguyễn Văn User',
-        'gender': 0,
-        'birthday': '2001-03-15',
-        'streak_count': 52,
-        'last_study_date': '2026-03-23',
-        'remind_time': '20:00',
-      },
-      {
-        'username': 'linhtt',
-        'display_name': 'Trần Thị Linh',
-        'gender': 1,
-        'birthday': '2002-07-22',
-        'streak_count': 38,
-        'last_study_date': '2026-03-23',
-        'remind_time': '21:00',
-      },
-      {
-        'username': 'duclh',
-        'display_name': 'Lê Hoàng Đức',
-        'gender': 0,
-        'birthday': '2000-11-05',
-        'streak_count': 31,
-        'last_study_date': '2026-03-22',
-        'remind_time': '19:30',
-      },
-      {
-        'username': 'maipd',
-        'display_name': 'Phạm Duy Mai',
-        'gender': 1,
-        'birthday': '2003-01-30',
-        'streak_count': 24,
-        'last_study_date': '2026-03-23',
-        'remind_time': '20:00',
-      },
-      {
-        'username': 'hungbt',
-        'display_name': 'Bùi Thanh Hùng',
-        'gender': 0,
-        'birthday': '2001-09-18',
-        'streak_count': 17,
-        'last_study_date': '2026-03-21',
-        'remind_time': '20:30',
-      },
-      {
-        'username': 'thuynh',
-        'display_name': 'Nguyễn Hải Thùy',
-        'gender': 1,
-        'birthday': '2004-04-12',
-        'streak_count': 12,
-        'last_study_date': '2026-03-23',
-        'remind_time': '21:00',
-      },
-      {
-        'username': 'kietvq',
-        'display_name': 'Vũ Quốc Kiệt',
-        'gender': 0,
-        'birthday': '2002-06-08',
-        'streak_count': 8,
-        'last_study_date': '2026-03-20',
-        'remind_time': '19:00',
-      },
-      {
-        'username': 'lanpth',
-        'display_name': 'Phan Thị Hồng Lan',
-        'gender': 1,
-        'birthday': '2003-12-25',
-        'streak_count': 5,
-        'last_study_date': '2026-03-23',
-        'remind_time': '20:00',
-      },
-      {
-        'username': 'namtq',
-        'display_name': 'Trần Quốc Nam',
-        'gender': 0,
-        'birthday': '2001-08-14',
-        'streak_count': 3,
-        'last_study_date': '2026-03-22',
-        'remind_time': '20:00',
-      },
-      {
-        'username': 'tranglt',
-        'display_name': 'Lê Thị Trang',
-        'gender': 1,
-        'birthday': '2004-02-28',
-        'streak_count': 1,
-        'last_study_date': '2026-03-23',
-        'remind_time': '20:00',
-      },
-    ];
+    int userId = await db.insert('users', {
+      'username': 'user1',
+      'password': '123',
+      'display_name': 'Nguyễn Văn User',
+      'role': 'user',
+      'gender': 1,
+      'birthday': '2004-05-20',
+      'is_active': 1,
+    });
 
-    final List<int> userIds = [];
-    for (var u in users) {
-      final id = await db.insert('users', {
-        ...u,
-        'password': '123',
-        'role': 'user',
-      });
-      userIds.add(id);
-    }
+    int lesson1Id = await db.insert('lessons', {
+      'user_id': userId,
+      'title': 'Bài 1: Trắc nghiệm cơ bản',
+      'type': 'quiz',
+    });
 
-    // ════════════════════════════════════════════
-    // 2. LESSONS — quiz và fill đa dạng chủ đề
-    // ════════════════════════════════════════════
-    final lessonsData = [
-      // user 0 — Nguyễn Văn Anh (streak 52)
-      {
-        'user_index': 0,
-        'title': 'Từ vựng chủ đề gia đình',
-        'type': 'quiz',
-        'created_at': '2026-03-10 08:30:00'
-      },
-      {
-        'user_index': 0,
-        'title': 'Động từ bất quy tắc',
-        'type': 'fill',
-        'created_at': '2026-03-12 09:00:00'
-      },
-      {
-        'user_index': 0,
-        'title': 'Thì hiện tại đơn',
-        'type': 'quiz',
-        'created_at': '2026-03-15 20:15:00'
-      },
+    int lesson2Id = await db.insert('lessons', {
+      'user_id': userId,
+      'title': 'Bài 2: Điền từ cơ bản',
+      'type': 'fill',
+    });
 
-      // user 1 — Trần Thị Linh (streak 38)
-      {
-        'user_index': 1,
-        'title': 'Từ vựng chủ đề du lịch',
-        'type': 'quiz',
-        'created_at': '2026-03-11 21:00:00'
-      },
-      {
-        'user_index': 1,
-        'title': 'Giới từ chỉ vị trí',
-        'type': 'fill',
-        'created_at': '2026-03-14 20:30:00'
-      },
+    await db.insert('questions', {
+      'lesson_id': lesson1Id,
+      'content': 'Apple nghĩa là gì?',
+      'answer': 'Táo',
+      'options': 'Táo|Cam|Chuối|Nho'
+    });
 
       // user 2 — Lê Hoàng Đức (streak 31)
       {

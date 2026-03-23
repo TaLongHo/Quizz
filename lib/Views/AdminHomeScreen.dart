@@ -6,6 +6,7 @@ import '../Models/User.dart';
 import 'AddLessonAdminScreen.dart';
 import 'LoginScreen.dart';
 import 'ManageQuizScreen.dart';
+import 'UserManagementScreen.dart'; // ✅ Import màn hình quản lý user
 
 class AdminHomeScreen extends StatefulWidget {
   final User user;
@@ -57,13 +58,15 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text("HỦY", style: TextStyle(color: Colors.grey)),
+            child:
+            const Text("HỦY", style: TextStyle(color: Colors.grey)),
           ),
           TextButton(
             onPressed: () {
               Navigator.pushAndRemoveUntil(
                 context,
-                MaterialPageRoute(builder: (context) => const LoginScreen()),
+                MaterialPageRoute(
+                    builder: (context) => const LoginScreen()),
                     (route) => false,
               );
             },
@@ -85,11 +88,12 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
         backgroundColor: Colors.white,
         foregroundColor: const Color(0xFF1E293B),
         title: const Text("ADMIN DASHBOARD",
-            style:
-            TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+            style: TextStyle(
+                fontWeight: FontWeight.bold, letterSpacing: 1.2)),
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout_rounded, color: Colors.redAccent),
+            icon:
+            const Icon(Icons.logout_rounded, color: Colors.redAccent),
             onPressed: () => _handleLogout(context),
             tooltip: "Đăng xuất",
           ),
@@ -109,7 +113,6 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
           children: [
             _buildWelcomeCard(),
             const SizedBox(height: 25),
-
             const Text("Hệ thống tổng quan",
                 style: TextStyle(
                     fontSize: 18,
@@ -159,12 +162,20 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
               mainAxisSpacing: 15,
               childAspectRatio: 1.1,
               children: [
+                // ✅ Nút Quản lý người dùng - Đã kết nối
                 _buildAdminMenu(
                   icon: Icons.manage_accounts,
                   title: "Người dùng",
-                  sub: "Quản lý & Phân quyền",
+                  sub: "Xem, khóa/mở khóa user",
                   color: const Color(0xFF6366F1),
-                  onTap: () {},
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const UserManagementScreen(),
+                      ),
+                    );
+                  },
                 ),
                 _buildAdminMenu(
                   icon: Icons.category,

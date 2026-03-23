@@ -6,7 +6,6 @@ import '../Controller/AuthController.dart';
 import '../Models/User.dart';
 import '../Service/AuthService.dart';
 import 'HomeScreen.dart';
-// import 'AdminHomeScreen.dart'; // Ní nhớ tạo file này hoặc đổi tên theo file admin của ní
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -19,56 +18,97 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _userController = TextEditingController();
   final TextEditingController _passController = TextEditingController();
   final AuthController _authController = AuthController();
+  bool _isLoading = false;
 
   void _handleLogin() async {
     String username = _userController.text.trim();
     String password = _passController.text.trim();
 
     if (username.isEmpty || password.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng nhập đầy đủ thông tin!')),
-      );
+      _showSnack('Vui lòng nhập đầy đủ thông tin!');
       return;
     }
 
-    // 1. Thực hiện login qua Controller (Vẫn dùng hàm cũ để không hỏng logic)
-    User? user = await _authController.handleLogin(username, password);
+    setState(() => _isLoading = true);
 
-    if (user != null) {
-      // 2. TẠO JWT TOKEN (Lớp bảo mật bổ sung)
-      // Việc tạo token ở đây hoàn toàn độc lập, không đụng chạm vào Object User
-      String token = AuthService.generateToken(user);
+    try {
+      User? user = await _authController.handleLogin(username, password);
 
-      await SessionService.saveSession(user.id!, token);
+      if (user != null) {
+        String token = AuthService.generateToken(user);
+        await SessionService.saveSession(user.id!, token);
 
-      // In ra console để ní kiểm tra, sau này ní có thể lưu vào SharedPreferences
-      debugPrint("Đăng nhập thành công! Token: $token");
+        if (!mounted) return;
 
-      // 3. PHÂN QUYỀN ĐIỀU HƯỚNG
-      if (user.role == 'admin') {
-        // Nếu là Admin thì sang trang quản trị
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => AdminHomeScreen(user: user, token: token)),
-        );
+        if (user.role == 'admin') {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+                builder: (context) =>
+                    AdminHomeScreen(user: user, token: token)),
+          );
+        } else {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+                builder: (context) => HomeScreen(user: user, token: token)),
+          );
+        }
       } else {
-        // Nếu là User thì sang HomeScreen (Code của các bạn khác vẫn chạy bình thường)
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => HomeScreen(user: user, token: token)),
-        );
+        _showSnack('Sai tài khoản hoặc mật khẩu!');
       }
-    } else {
-      // Đăng nhập thất bại
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Sai tài khoản hoặc mật khẩu!')),
-      );
+    } catch (e) {
+      if (e.toString() == 'BLOCKED') {
+        // ✅ Hiển thị thông báo tài khoản bị khóa rõ ràng
+        _showBlockedDialog();
+      } else {
+        _showSnack('Lỗi đăng nhập, vui lòng thử lại!');
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  void _showSnack(String msg) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(msg)));
+  }
+
+  void _showBlockedDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape:
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            const Icon(Icons.block_rounded, color: Colors.red, size: 28),
+            const SizedBox(width: 10),
+            const Text('Tài khoản bị khóa',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: const Text(
+          'Tài khoản của bạn đã bị quản trị viên khóa.\n\nVui lòng liên hệ hỗ trợ để được mở khóa.',
+          style: TextStyle(fontSize: 14, height: 1.5),
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              shape: const StadiumBorder(),
+            ),
+            child: const Text('Đã hiểu',
+                style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    // Giữ nguyên giao diện Gradient cực đẹp của ní
     return Scaffold(
       resizeToAvoidBottomInset: false,
       body: Container(
@@ -87,7 +127,10 @@ class _LoginScreenState extends State<LoginScreen> {
               const Icon(Icons.lock_outline, color: Colors.white, size: 80),
               const SizedBox(height: 20),
               const Text("Quizz",
-                  style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold)),
               const SizedBox(height: 40),
               TextField(
                 controller: _userController,
@@ -98,7 +141,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   prefixIcon: const Icon(Icons.person, color: Colors.white),
                   filled: true,
                   fillColor: Colors.white.withOpacity(0.1),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(15),
+                      borderSide: BorderSide.none),
                 ),
               ),
               const SizedBox(height: 20),
@@ -112,7 +157,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   prefixIcon: const Icon(Icons.lock, color: Colors.white),
                   filled: true,
                   fillColor: Colors.white.withOpacity(0.1),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(15),
+                      borderSide: BorderSide.none),
                 ),
               ),
               const SizedBox(height: 40),
@@ -123,23 +170,28 @@ class _LoginScreenState extends State<LoginScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
                     foregroundColor: Colors.purple[900],
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(15)),
                   ),
-                  onPressed: _handleLogin,
-                  child: const Text("Đăng Nhập", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  onPressed: _isLoading ? null : _handleLogin,
+                  child: _isLoading
+                      ? const SizedBox(
+                      height: 22,
+                      width: 22,
+                      child: CircularProgressIndicator(strokeWidth: 2.5))
+                      : const Text("Đăng Nhập",
+                      style: TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.bold)),
                 ),
               ),
-              // Thêm đoạn này vào dưới cùng của Column trong LoginScreen.dart
               const SizedBox(height: 20),
               GestureDetector(
                 onTap: () async {
-                  // 1. Chuyển sang trang đăng ký và đợi dữ liệu trả về
                   final result = await Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const RegisterScreen(),
-                  ));
-
-                  // 2. Nếu đăng ký thành công, fill dữ liệu vào ô nhập
+                    MaterialPageRoute(
+                        builder: (context) => const RegisterScreen()),
+                  );
                   if (result != null && result is Map) {
                     setState(() {
                       _userController.text = result['user'];
@@ -154,7 +206,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     children: [
                       TextSpan(
                         text: "Đăng ký ngay",
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, decoration: TextDecoration.underline),
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            decoration: TextDecoration.underline),
                       ),
                     ],
                   ),
