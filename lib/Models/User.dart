@@ -3,12 +3,13 @@ class User {
   final String username;
   final String password;
   final String displayName;
-  final String role; // 'admin' hoặc 'user'
-  final int gender; // 0: Nam, 1: Nữ, 2: Khác
+  final String role;
+  final int gender;
   final String birthday;
   final int streakCount;
   final String? lastStudyDate;
   final String remindTime;
+  final int isActive; // ✅ MỚI: 1 = active, 0 = blocked
 
   User({
     this.id,
@@ -21,25 +22,28 @@ class User {
     this.streakCount = 0,
     this.lastStudyDate,
     this.remindTime = '20:00',
+    this.isActive = 1, // Mặc định active
   });
 
-  // Chuyển từ Map (Database) sang Object (Dart)
+  // Tiện ích: kiểm tra nhanh
+  bool get isBlocked => isActive == 0;
+
   factory User.fromMap(Map<String, dynamic> map) {
     return User(
       id: map['id'],
       username: map['username'],
       password: map['password'],
       displayName: map['display_name'],
-      role: map['role'],
-      gender: map['gender'],
-      birthday: map['birthday'],
-      streakCount: map['streak_count'],
+      role: map['role'] ?? 'user',
+      gender: map['gender'] ?? 0,
+      birthday: map['birthday'] ?? '',
+      streakCount: map['streak_count'] ?? 0,
       lastStudyDate: map['last_study_date'],
-      remindTime: map['remind_time'],
+      remindTime: map['remind_time'] ?? '20:00',
+      isActive: map['is_active'] ?? 1, // ✅ Đọc từ DB, default = 1
     );
   }
 
-  // Chuyển từ Object (Dart) sang Map (Để lưu vào Database)
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -52,6 +56,7 @@ class User {
       'streak_count': streakCount,
       'last_study_date': lastStudyDate,
       'remind_time': remindTime,
+      'is_active': isActive, // ✅ Ghi vào DB
     };
   }
 }

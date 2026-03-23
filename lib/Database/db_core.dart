@@ -20,26 +20,37 @@ class DbCore {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2, // ⬆️ Tăng lên 2 để chạy onUpgrade
       onCreate: _createDB,
+      onUpgrade: _upgradeDB,
       onConfigure: (db) async => await db.execute('PRAGMA foreign_keys = ON'),
     );
   }
 
+  // ─── MIGRATION: Thêm cột is_active vào DB cũ ─────────────────────────────
+  Future _upgradeDB(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute(
+        'ALTER TABLE users ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1',
+      );
+    }
+  }
+
   Future _createDB(Database db, int version) async {
-    // 1. Bảng Users (Full: Role, Gender, Birthday)
+    // 1. Bảng Users
     await db.execute('''
       CREATE TABLE users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE NOT NULL,
         password TEXT NOT NULL,
         display_name TEXT NOT NULL,
-        role TEXT NOT NULL DEFAULT 'user', -- 'admin' hoặc 'user'
-        gender INTEGER,                    -- 0: Nam, 1: Nữ, 2: Khác
-        birthday TEXT,                     -- YYYY-MM-DD
+        role TEXT NOT NULL DEFAULT 'user',
+        gender INTEGER,
+        birthday TEXT,
         streak_count INTEGER DEFAULT 0,
-        last_study_date TEXT,      
-        remind_time TEXT DEFAULT '20:00'
+        last_study_date TEXT,
+        remind_time TEXT DEFAULT '20:00',
+        is_active INTEGER NOT NULL DEFAULT 1
       )
     ''');
 
@@ -67,7 +78,7 @@ class DbCore {
       )
     ''');
 
-    // 4. Bảng StudyLogs (Lịch học)
+    // 4. Bảng StudyLogs
     await db.execute('''
       CREATE TABLE study_logs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -83,14 +94,14 @@ class DbCore {
   }
 
   Future _seedData(Database db) async {
-    // 1. Users
-    int adminId = await db.insert('users', {
+    await db.insert('users', {
       'username': 'admin',
       'password': '123',
       'display_name': 'Quản Trị Viên',
       'role': 'admin',
       'gender': 0,
       'birthday': '1995-01-01',
+      'is_active': 1,
     });
 
     int userId = await db.insert('users', {
@@ -100,24 +111,23 @@ class DbCore {
       'role': 'user',
       'gender': 1,
       'birthday': '2004-05-20',
+      'is_active': 1,
     });
 
-    // 2. Lessons (⚠️ sửa type)
     int lesson1Id = await db.insert('lessons', {
       'user_id': userId,
       'title': 'Bài 1: Trắc nghiệm cơ bản',
-      'type': 'quiz', // ✅
+      'type': 'quiz',
     });
 
     int lesson2Id = await db.insert('lessons', {
       'user_id': userId,
       'title': 'Bài 2: Điền từ cơ bản',
-      'type': 'fill', // ✅
+      'type': 'fill',
     });
 
-    // 3. Questions - Lesson 1
     await db.insert('questions', {
-      'lesson_id': lesson1Id, // ✅ đúng
+      'lesson_id': lesson1Id,
       'content': 'Apple nghĩa là gì?',
       'answer': 'Táo',
       'options': 'Táo|Cam|Chuối|Nho'
@@ -130,9 +140,8 @@ class DbCore {
       'options': 'Mèo|Chó|Cá|Chim'
     });
 
-    // 4. Questions - Lesson 2
     await db.insert('questions', {
-      'lesson_id': lesson2Id, // ✅ đúng
+      'lesson_id': lesson2Id,
       'content': 'Chọn dạng đúng của "to be" với I',
       'answer': 'am',
       'options': 'is|am|are'

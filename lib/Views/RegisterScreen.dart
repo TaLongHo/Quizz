@@ -83,6 +83,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         gender: _selectedGender,
         birthday: _birthController.text,
         role: 'user',
+        isActive: 1, // ✅ Thêm dòng này
       );
 
       String? error = await _authController.handleRegister(newUser);
