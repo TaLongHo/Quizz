@@ -138,12 +138,6 @@ class _LessonDetailsScreenAdminState
           );
         },
       ),
-
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {},
-        backgroundColor: themeColor,
-        child: const Icon(Icons.add),
-      ),
     );
   }
 
@@ -195,7 +189,7 @@ class _LessonDetailsScreenAdminState
                     final updated = await Navigator.push<bool>(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => UpdateQuizScreen(lesson: widget.lesson),
+                        builder: (context) => UpdateQuizScreen(lesson: widget.lesson,  question: q,),
                       ),
                     );
 

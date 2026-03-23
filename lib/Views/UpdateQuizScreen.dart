@@ -22,17 +22,51 @@ class _UpdateQuizScreenState extends State<UpdateQuizScreen> {
   late TextEditingController _a3Controller;
   late TextEditingController _a4Controller;
 
+
+  @override
+  void dispose() {
+    _qController.dispose();
+    _a1Controller.dispose();
+    _a2Controller.dispose();
+    _a3Controller.dispose();
+    _a4Controller.dispose();
+    super.dispose();
+  }
+
+
   @override
   void initState() {
     super.initState();
-    _qController = TextEditingController(text: widget.question?.content ?? "");
 
-    // Tách chuỗi options "A|B|C|D"
-    List<String> opts = widget.question?.options?.split('|') ?? ["", "", "", ""];
-    _a1Controller = TextEditingController(text: opts.length > 0 ? opts[0] : "");
-    _a2Controller = TextEditingController(text: opts.length > 1 ? opts[1] : "");
-    _a3Controller = TextEditingController(text: opts.length > 2 ? opts[2] : "");
-    _a4Controller = TextEditingController(text: opts.length > 3 ? opts[3] : "");
+    _qController = TextEditingController(
+      text: widget.question?.content ?? "",
+    );
+
+    // 🔥 Lấy options từ DB
+    List<String> opts = (widget.question?.options ?? "").split('|');
+
+    // đảm bảo luôn có 4 phần tử
+    while (opts.length < 4) {
+      opts.add("");
+    }
+
+    String correct = widget.question?.answer ?? "";
+
+    // 🔥 Nếu answer nằm trong options → đưa lên đầu
+    if (opts.contains(correct)) {
+      opts.remove(correct);
+    }
+
+    // 🔥 luôn đưa đáp án đúng lên vị trí đầu
+    opts.insert(0, correct);
+
+    // 🔥 chỉ lấy 4 phần tử đầu (tránh dư)
+    opts = opts.take(4).toList();
+
+    _a1Controller = TextEditingController(text: opts[0]); // đúng
+    _a2Controller = TextEditingController(text: opts[1]);
+    _a3Controller = TextEditingController(text: opts[2]);
+    _a4Controller = TextEditingController(text: opts[3]);
   }
 
   @override
@@ -125,19 +159,49 @@ class _UpdateQuizScreenState extends State<UpdateQuizScreen> {
   }
 
   void _saveUpdate() async {
+    // check rỗng
     if (_qController.text.isEmpty || _a1Controller.text.isEmpty) return;
 
-    String optionsArr = "${_a1Controller.text}|${_a2Controller.text}|${_a3Controller.text}|${_a4Controller.text}";
+    // 🔥 THÊM Ở ĐÂY (ngay sau validate rỗng)
+    if ([_a2Controller.text, _a3Controller.text, _a4Controller.text]
+        .contains(_a1Controller.text)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Đáp án đúng không được trùng")),
+      );
+      return;
+    }
+
+    // 🔽 phần xử lý options giữ nguyên bên dưới
+    List<String> options = [
+      _a1Controller.text,
+      _a2Controller.text,
+      _a3Controller.text,
+      _a4Controller.text,
+    ].where((e) => e.trim().isNotEmpty).toList();
+
+    List<String> uniqueOptions = [];
+    for (var opt in options) {
+      if (!uniqueOptions.contains(opt)) {
+        uniqueOptions.add(opt);
+      }
+    }
+
+    while (uniqueOptions.length < 4) {
+      uniqueOptions.add("");
+    }
+
+    String optionsArr = uniqueOptions.join('|');
 
     Question updatedQ = Question(
       id: widget.question?.id,
-      lessonId: widget.lesson.id!, // FIX LỖI Ở ĐÂY
+      lessonId: widget.lesson.id!,
       content: _qController.text,
       answer: _a1Controller.text,
       options: optionsArr,
     );
 
     await _repo.updateQuestion(updatedQ);
+
     if (mounted) Navigator.pop(context, true);
   }
 }
